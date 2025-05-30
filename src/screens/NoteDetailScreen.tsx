@@ -46,10 +46,9 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
     content: '',
     isPriority: false,
     hasReminder: false,
+    reminderType: 'specific' as 'specific' | 'shift', // "Đặt lịch cụ thể" | "Nhắc theo ca"
     reminderDateTime: new Date(),
     associatedShiftIds: [] as string[],
-    reminderDays: [] as number[], // 0-6 (Sunday-Saturday) for manual day selection
-    useShiftSchedule: true, // true = follow shift schedule, false = manual days
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -59,36 +58,28 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
   const [errors, setErrors] = useState({
     title: '',
     content: '',
-    reminderTime: '',
-    reminderDays: '',
+    reminderDateTime: '',
+    reminderShifts: '',
     duplicate: '',
   });
 
   useEffect(() => {
     if (existingNote) {
+      // Determine reminder type based on existing data
+      const hasSpecificTime = !!existingNote.reminderDateTime;
+      const hasShiftAssociation = (existingNote.associatedShiftIds?.length || 0) > 0;
+
       setFormData({
         title: existingNote.title,
         content: existingNote.content,
         isPriority: existingNote.isPriority,
-        hasReminder: !!existingNote.reminderDateTime,
+        hasReminder: hasSpecificTime || hasShiftAssociation,
+        reminderType: hasSpecificTime ? 'specific' : 'shift',
         reminderDateTime: existingNote.reminderDateTime ? new Date(existingNote.reminderDateTime) : new Date(),
         associatedShiftIds: existingNote.associatedShiftIds || [],
-        reminderDays: [], // Will be populated based on shift schedule or manual selection
-        useShiftSchedule: (existingNote.associatedShiftIds?.length || 0) > 0,
       });
     }
   }, [existingNote]);
-
-  // Constants for days of week
-  const DAYS_OF_WEEK = [
-    { value: 1, label: 'T2', fullName: 'Thứ Hai' },
-    { value: 2, label: 'T3', fullName: 'Thứ Ba' },
-    { value: 3, label: 'T4', fullName: 'Thứ Tư' },
-    { value: 4, label: 'T5', fullName: 'Thứ Năm' },
-    { value: 5, label: 'T6', fullName: 'Thứ Sáu' },
-    { value: 6, label: 'T7', fullName: 'Thứ Bảy' },
-    { value: 0, label: 'CN', fullName: 'Chủ Nhật' },
-  ];
 
   const handleShiftToggle = (shiftId: string) => {
     setFormData(prev => ({
@@ -96,21 +87,9 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
       associatedShiftIds: prev.associatedShiftIds.includes(shiftId)
         ? prev.associatedShiftIds.filter(id => id !== shiftId)
         : [...prev.associatedShiftIds, shiftId],
-      useShiftSchedule: true, // Auto-enable shift schedule when selecting shifts
     }));
     // Clear errors when user makes changes
-    setErrors(prev => ({ ...prev, reminderDays: '' }));
-  };
-
-  const handleDayToggle = (dayValue: number) => {
-    setFormData(prev => ({
-      ...prev,
-      reminderDays: prev.reminderDays.includes(dayValue)
-        ? prev.reminderDays.filter(d => d !== dayValue)
-        : [...prev.reminderDays, dayValue].sort(),
-    }));
-    // Clear errors when user makes changes
-    setErrors(prev => ({ ...prev, reminderDays: '' }));
+    setErrors(prev => ({ ...prev, reminderShifts: '' }));
   };
 
   const checkDuplicateNote = (title: string, content: string): boolean => {
@@ -128,8 +107,8 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
     const newErrors = {
       title: '',
       content: '',
-      reminderTime: '',
-      reminderDays: '',
+      reminderDateTime: '',
+      reminderShifts: '',
       duplicate: '',
     };
 
@@ -163,23 +142,21 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
 
     // Reminder validation
     if (formData.hasReminder) {
-      const now = new Date();
-      const reminderTime = new Date(formData.reminderDateTime);
+      if (formData.reminderType === 'specific') {
+        // Validate specific date/time
+        const now = new Date();
+        const reminderTime = new Date(formData.reminderDateTime);
 
-      if (reminderTime <= now) {
-        newErrors.reminderTime = 'Thời gian nhắc nhở phải trong tương lai';
-        isValid = false;
-      }
-
-      // Day selection validation
-      if (!formData.useShiftSchedule) {
-        if (formData.reminderDays.length === 0) {
-          newErrors.reminderDays = 'Vui lòng chọn ít nhất một ngày trong tuần';
+        if (reminderTime <= now) {
+          newErrors.reminderDateTime = 'Thời gian nhắc nhở phải trong tương lai';
           isValid = false;
         }
-      } else if (formData.associatedShiftIds.length === 0) {
-        newErrors.reminderDays = 'Vui lòng chọn ít nhất một ca làm việc hoặc chuyển sang chọn ngày thủ công';
-        isValid = false;
+      } else if (formData.reminderType === 'shift') {
+        // Validate shift selection
+        if (formData.associatedShiftIds.length === 0) {
+          newErrors.reminderShifts = 'Vui lòng chọn ít nhất một ca làm việc';
+          isValid = false;
+        }
       }
     }
 
@@ -208,8 +185,12 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                 title: formData.title.trim(),
                 content: formData.content.trim(),
                 isPriority: formData.isPriority,
-                reminderDateTime: formData.hasReminder ? formData.reminderDateTime.toISOString() : undefined,
-                associatedShiftIds: formData.associatedShiftIds.length > 0 ? formData.associatedShiftIds : undefined,
+                reminderDateTime: (formData.hasReminder && formData.reminderType === 'specific')
+                  ? formData.reminderDateTime.toISOString()
+                  : undefined,
+                associatedShiftIds: (formData.hasReminder && formData.reminderType === 'shift' && formData.associatedShiftIds.length > 0)
+                  ? formData.associatedShiftIds
+                  : undefined,
                 createdAt: existingNote?.createdAt || new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               };
@@ -276,7 +257,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
       newDateTime.setMinutes(selectedTime.getMinutes());
       setFormData(prev => ({ ...prev, reminderDateTime: newDateTime }));
       // Clear reminder time error
-      setErrors(prev => ({ ...prev, reminderTime: '' }));
+      setErrors(prev => ({ ...prev, reminderDateTime: '' }));
     }
   };
 
@@ -299,8 +280,8 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
            formData.content.trim().length <= 300 &&
            !checkDuplicateNote(formData.title, formData.content) &&
            (!formData.hasReminder || (
-             formData.reminderDateTime > new Date() &&
-             (formData.useShiftSchedule ? formData.associatedShiftIds.length > 0 : formData.reminderDays.length > 0)
+             (formData.reminderType === 'specific' && formData.reminderDateTime > new Date()) ||
+             (formData.reminderType === 'shift' && formData.associatedShiftIds.length > 0)
            ));
   };
 
@@ -404,57 +385,42 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                 value={formData.hasReminder}
                 onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, hasReminder: value }));
-                  setErrors(prev => ({ ...prev, reminderTime: '', reminderDays: '' }));
+                  setErrors(prev => ({ ...prev, reminderDateTime: '', reminderShifts: '' }));
                 }}
               />
             </View>
 
             {formData.hasReminder && (
               <>
-                <Text style={[styles.subSectionTitle, { color: theme.colors.onSurface }]}>
-                  Thời gian nhắc nhở *
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={() => setShowTimePicker(true)}
-                  style={[styles.timePickerButton, errors.reminderTime ? { borderColor: theme.colors.error } : {}]}
-                  icon="clock-outline"
-                >
-                  {format(formData.reminderDateTime, 'HH:mm', { locale: vi })}
-                </Button>
-                <HelperText type="error" visible={!!errors.reminderTime}>
-                  {errors.reminderTime}
-                </HelperText>
-
-                {/* Schedule Type Selection */}
+                {/* Reminder Type Selection */}
                 <Text style={[styles.subSectionTitle, { color: theme.colors.onSurface, marginTop: 16 }]}>
-                  Lịch nhắc nhở *
+                  Chọn kiểu nhắc *
                 </Text>
 
                 <View style={styles.scheduleTypeContainer}>
                   <View style={styles.radioOption}>
                     <Checkbox
-                      status={formData.useShiftSchedule ? 'checked' : 'unchecked'}
+                      status={formData.reminderType === 'specific' ? 'checked' : 'unchecked'}
                       onPress={() => {
-                        setFormData(prev => ({ ...prev, useShiftSchedule: true }));
-                        setErrors(prev => ({ ...prev, reminderDays: '' }));
+                        setFormData(prev => ({ ...prev, reminderType: 'specific' }));
+                        setErrors(prev => ({ ...prev, reminderDateTime: '', reminderShifts: '' }));
                       }}
                     />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      Theo ca làm việc
+                      Đặt lịch cụ thể
                     </Text>
                   </View>
 
                   <View style={styles.radioOption}>
                     <Checkbox
-                      status={!formData.useShiftSchedule ? 'checked' : 'unchecked'}
+                      status={formData.reminderType === 'shift' ? 'checked' : 'unchecked'}
                       onPress={() => {
-                        setFormData(prev => ({ ...prev, useShiftSchedule: false }));
-                        setErrors(prev => ({ ...prev, reminderDays: '' }));
+                        setFormData(prev => ({ ...prev, reminderType: 'shift' }));
+                        setErrors(prev => ({ ...prev, reminderDateTime: '', reminderShifts: '' }));
                       }}
                     />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      Chọn ngày thủ công
+                      Nhắc theo ca
                     </Text>
                   </View>
                 </View>
@@ -463,17 +429,47 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
           </Card.Content>
         </Card>
 
-        {/* Shift Selection or Manual Days */}
+        {/* Specific Date/Time or Shift Selection */}
         {formData.hasReminder && (
           <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
-              {formData.useShiftSchedule ? (
+              {formData.reminderType === 'specific' ? (
                 <>
                   <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                    Liên kết với ca làm việc *
+                    Đặt lịch cụ thể *
+                  </Text>
+
+                  <View style={styles.dateTimeContainer}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => setShowDatePicker(true)}
+                      style={styles.dateTimeButton}
+                      icon="calendar"
+                    >
+                      📅 {format(formData.reminderDateTime, 'dd/MM/yyyy', { locale: vi })}
+                    </Button>
+
+                    <Button
+                      mode="outlined"
+                      onPress={() => setShowTimePicker(true)}
+                      style={styles.dateTimeButton}
+                      icon="clock-outline"
+                    >
+                      🕐 {format(formData.reminderDateTime, 'HH:mm', { locale: vi })}
+                    </Button>
+                  </View>
+
+                  <HelperText type="error" visible={!!errors.reminderDateTime}>
+                    {errors.reminderDateTime}
+                  </HelperText>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                    Nhắc theo ca *
                   </Text>
                   <Text style={[styles.sectionDescription, { color: theme.colors.onSurfaceVariant }]}>
-                    Chọn ca làm việc để nhận nhắc nhở theo lịch ca
+                    Nhắc nhở sẽ được đặt trước 5 phút giờ xuất phát (departureTime) của (các) ca đã chọn.
                   </Text>
 
                   {state.shifts.length > 0 ? (
@@ -492,38 +488,15 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                     </View>
                   ) : (
                     <Text style={[styles.noShiftsText, { color: theme.colors.onSurfaceVariant }]}>
-                      Chưa có ca làm việc nào. Hãy tạo ca làm việc trước hoặc chọn "Chọn ngày thủ công".
+                      Chưa có ca làm việc nào. Hãy tạo ca làm việc trước hoặc chọn "Đặt lịch cụ thể".
                     </Text>
                   )}
-                </>
-              ) : (
-                <>
-                  <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                    Chọn ngày nhắc nhở *
-                  </Text>
-                  <Text style={[styles.sectionDescription, { color: theme.colors.onSurfaceVariant }]}>
-                    Chọn các ngày trong tuần để nhận nhắc nhở
-                  </Text>
 
-                  <View style={styles.daysContainer}>
-                    {DAYS_OF_WEEK.map((day) => (
-                      <View key={day.value} style={styles.dayOption}>
-                        <Checkbox
-                          status={formData.reminderDays.includes(day.value) ? 'checked' : 'unchecked'}
-                          onPress={() => handleDayToggle(day.value)}
-                        />
-                        <Text style={[styles.dayLabel, { color: theme.colors.onSurface }]}>
-                          {day.label}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
+                  <HelperText type="error" visible={!!errors.reminderShifts}>
+                    {errors.reminderShifts}
+                  </HelperText>
                 </>
               )}
-
-              <HelperText type="error" visible={!!errors.reminderDays}>
-                {errors.reminderDays}
-              </HelperText>
             </Card.Content>
           </Card>
         )}
@@ -557,7 +530,17 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
         </View>
       </ScrollView>
 
-      {/* Time Picker */}
+      {/* Date/Time Pickers */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={formData.reminderDateTime}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+
       {showTimePicker && (
         <DateTimePicker
           value={formData.reminderDateTime}
@@ -636,6 +619,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     justifyContent: 'flex-start',
   },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  dateTimeButton: {
+    flex: 0.48,
+  },
   scheduleTypeContainer: {
     marginVertical: 8,
   },
@@ -663,23 +655,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 16,
   },
-  daysContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  dayOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '48%',
-    marginVertical: 4,
-  },
-  dayLabel: {
-    fontSize: 16,
-    marginLeft: 8,
-    minWidth: 30,
-  },
+
   actions: {
     marginTop: 24,
     marginBottom: 32,

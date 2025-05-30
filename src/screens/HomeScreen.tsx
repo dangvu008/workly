@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, IconButton, useTheme, Button, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
@@ -89,13 +89,49 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   const [topNotes, setTopNotes] = React.useState<any[]>([]);
+  const [expandedNotes, setExpandedNotes] = React.useState<Set<string>>(new Set());
 
-  // Load priority notes using workManager
+  // Get upcoming notes with reminder info
+  const getUpcomingNotes = () => {
+    const now = new Date();
+    const notesWithReminders = state.notes.filter(note => {
+      // Has specific reminder time
+      if (note.reminderDateTime) {
+        const reminderTime = new Date(note.reminderDateTime);
+        return reminderTime > now;
+      }
+
+      // Has shift-based reminders
+      if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
+        return true; // Always show shift-based notes as they have recurring reminders
+      }
+
+      return false;
+    });
+
+    // Sort by reminder priority: specific times first (by time), then shift-based
+    const sortedNotes = notesWithReminders.sort((a, b) => {
+      if (a.reminderDateTime && b.reminderDateTime) {
+        return new Date(a.reminderDateTime).getTime() - new Date(b.reminderDateTime).getTime();
+      }
+      if (a.reminderDateTime && !b.reminderDateTime) return -1;
+      if (!a.reminderDateTime && b.reminderDateTime) return 1;
+
+      // Both are shift-based, sort by priority then by updated time
+      if (a.isPriority && !b.isPriority) return -1;
+      if (!a.isPriority && b.isPriority) return 1;
+
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+
+    return sortedNotes.slice(0, 3); // Show max 3 notes
+  };
+
+  // Load upcoming notes
   const loadTopNotes = async () => {
     try {
-      const count = state.settings?.notesDisplayCount || 3;
-      const priorityNotes = await workManager.getPriorityNotes(state.notes, count);
-      setTopNotes(priorityNotes);
+      const upcomingNotes = getUpcomingNotes();
+      setTopNotes(upcomingNotes);
     } catch (error) {
       console.error('Error loading top notes:', error);
       setTopNotes([]);
@@ -106,6 +142,81 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   React.useEffect(() => {
     loadTopNotes();
   }, [state.notes, state.settings?.notesDisplayCount, state.activeShift]);
+
+  // Helper function to format reminder info
+  const formatReminderInfo = (note: any): string => {
+    // Specific reminder time
+    if (note.reminderDateTime) {
+      try {
+        const reminderDate = new Date(note.reminderDateTime);
+        const now = new Date();
+        const diffMs = reminderDate.getTime() - now.getTime();
+
+        if (diffMs < 0) {
+          return 'Đã qua';
+        } else if (diffMs < 24 * 60 * 60 * 1000) {
+          return `Hôm nay ${format(reminderDate, 'HH:mm')}`;
+        } else if (diffMs < 7 * 24 * 60 * 60 * 1000) {
+          return format(reminderDate, 'EEEE HH:mm', { locale: vi });
+        } else {
+          return format(reminderDate, 'dd/MM/yyyy HH:mm');
+        }
+      } catch (error) {
+        return 'Lỗi thời gian';
+      }
+    }
+
+    // Shift-based reminders
+    if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
+      const associatedShifts = state.shifts.filter(shift =>
+        note.associatedShiftIds!.includes(shift.id)
+      );
+
+      if (associatedShifts.length === 0) {
+        return 'Ca đã bị xóa';
+      }
+
+      const shiftNames = associatedShifts.map(shift => shift.name).join(', ');
+      return `Theo ca: ${shiftNames}`;
+    }
+
+    return '';
+  };
+
+  // Toggle note expansion
+  const toggleNoteExpansion = (noteId: string) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle note deletion with confirmation
+  const handleDeleteNote = (note: any) => {
+    Alert.alert(
+      'Xác nhận xóa',
+      `Bạn có muốn xóa ghi chú "${note.title}" không?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await actions.deleteNote(note.id);
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể xóa ghi chú.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const attendanceHistory = getAttendanceHistory();
 
@@ -236,10 +347,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           <Card.Content>
             <View style={styles.notesHeader}>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                Ghi chú sắp tới
+                Ghi Chú Sắp Tới
               </Text>
               <IconButton
-                icon="format-list-bulleted"
+                icon="menu"
                 size={20}
                 iconColor={theme.colors.primary}
                 onPress={() => navigation.navigate('NotesTab')}
@@ -248,55 +359,70 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
             {topNotes.length > 0 ? (
               <>
-                {topNotes.map((note, index) => (
-                  <View key={note.id}>
-                    <View style={styles.noteItem}>
-                      <View style={styles.noteContent}>
-                        {note.isPriority && (
-                          <Text style={styles.priorityIcon}>⭐</Text>
-                        )}
-                        <View style={styles.noteText}>
-                          <Text
-                            style={[styles.noteTitle, { color: theme.colors.onSurface }]}
-                            numberOfLines={1}
-                          >
-                            {note.title}
-                          </Text>
-                          <Text
-                            style={[styles.noteDescription, { color: theme.colors.onSurfaceVariant }]}
-                            numberOfLines={2}
-                          >
-                            {note.content}
-                          </Text>
-                          {note.reminderDateTime && (
-                            <Text style={[styles.noteReminder, { color: theme.colors.primary }]}>
-                              Nhắc lúc: {format(new Date(note.reminderDateTime), 'dd/MM HH:mm')}
-                            </Text>
+                {topNotes.map((note, index) => {
+                  const isExpanded = expandedNotes.has(note.id);
+                  const reminderInfo = formatReminderInfo(note);
+
+                  return (
+                    <View key={note.id}>
+                      <TouchableOpacity
+                        style={styles.noteItem}
+                        onPress={() => toggleNoteExpansion(note.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.noteContent}>
+                          {note.isPriority && (
+                            <Text style={styles.priorityIcon}>⭐</Text>
                           )}
+                          <View style={styles.noteText}>
+                            <Text
+                              style={[styles.noteTitle, { color: theme.colors.onSurface }]}
+                              numberOfLines={1}
+                            >
+                              {note.title}
+                            </Text>
+                            <Text
+                              style={[styles.noteDescription, { color: theme.colors.onSurfaceVariant }]}
+                              numberOfLines={isExpanded ? undefined : 2}
+                            >
+                              {note.content}
+                            </Text>
+                            {reminderInfo && (
+                              <Text style={[styles.noteReminder, { color: theme.colors.primary }]}>
+                                Nhắc: {reminderInfo}
+                              </Text>
+                            )}
+                          </View>
                         </View>
-                      </View>
-                      <View style={styles.noteActions}>
-                        <IconButton
-                          icon="pencil"
-                          size={16}
-                          iconColor={theme.colors.primary}
-                          onPress={() => navigation.navigate('NoteDetail', { noteId: note.id })}
-                        />
-                        <IconButton
-                          icon="delete"
-                          size={16}
-                          iconColor={theme.colors.error}
-                          onPress={() => actions.deleteNote(note.id)}
-                        />
-                      </View>
+                        <View style={styles.noteActions}>
+                          <IconButton
+                            icon="pencil"
+                            size={16}
+                            iconColor={theme.colors.primary}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              navigation.navigate('NoteDetail', { noteId: note.id });
+                            }}
+                          />
+                          <IconButton
+                            icon="delete"
+                            size={16}
+                            iconColor={theme.colors.error}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleDeleteNote(note);
+                            }}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                      {index < topNotes.length - 1 && <Divider />}
                     </View>
-                    {index < topNotes.length - 1 && <Divider />}
-                  </View>
-                ))}
+                  );
+                })}
               </>
             ) : (
               <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                Không có ghi chú nào
+                Không có ghi chú sắp tới
               </Text>
             )}
 
@@ -306,7 +432,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               style={styles.addNoteButton}
               icon="plus"
             >
-              Thêm ghi chú
+              Thêm Ghi Chú
             </Button>
           </Card.Content>
         </Card>

@@ -82,6 +82,52 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
     );
   };
 
+  const handleResetSampleNotes = async () => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có muốn thay thế tất cả ghi chú hiện tại bằng dữ liệu mẫu không? Hành động này không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Thay thế',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { resetWithSampleNotes } = await import('../services/sampleData');
+              await resetWithSampleNotes();
+              Alert.alert('Thành công', 'Đã thay thế bằng dữ liệu mẫu. Vui lòng khởi động lại ứng dụng để thấy thay đổi.');
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể thay thế dữ liệu.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleClearAllNotes = async () => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có muốn xóa tất cả ghi chú không? Hành động này không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa tất cả',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { clearAllNotes } = await import('../services/sampleData');
+              await clearAllNotes();
+              Alert.alert('Thành công', 'Đã xóa tất cả ghi chú. Vui lòng khởi động lại ứng dụng để thấy thay đổi.');
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể xóa ghi chú.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
@@ -281,6 +327,31 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               left={(props) => <List.Icon {...props} icon="restore" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={handleRestoreData}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* Developer/Debug */}
+        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card.Content>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Dữ liệu mẫu (Debug)
+            </Text>
+
+            <List.Item
+              title="Thay thế bằng dữ liệu mẫu"
+              description={`Hiện có ${state.notes.length} ghi chú`}
+              left={(props) => <List.Icon {...props} icon="database-refresh" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleResetSampleNotes}
+            />
+
+            <List.Item
+              title="Xóa tất cả ghi chú"
+              description="Xóa toàn bộ dữ liệu ghi chú"
+              left={(props) => <List.Icon {...props} icon="delete-sweep" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={handleClearAllNotes}
             />
           </Card.Content>
         </Card>

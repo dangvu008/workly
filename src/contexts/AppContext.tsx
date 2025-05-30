@@ -195,12 +195,19 @@ export function AppProvider({ children }: AppProviderProps) {
       await notificationService.initialize();
 
       // Load all data
-      const [settings, shifts, activeShiftId, notes] = await Promise.all([
+      const [settings, shifts, activeShiftId] = await Promise.all([
         storageService.getUserSettings(),
         storageService.getShiftList(),
         storageService.getActiveShiftId(),
-        storageService.getNotes(),
       ]);
+
+      // Load notes and add sample data if needed
+      let notes = await storageService.getNotes();
+      if (notes.length === 0) {
+        // Import and add sample data
+        const { addSampleNotesToStorage } = await import('../services/sampleData');
+        notes = await addSampleNotesToStorage();
+      }
 
       dispatch({ type: 'SET_SETTINGS', payload: settings });
       dispatch({ type: 'SET_SHIFTS', payload: shifts });

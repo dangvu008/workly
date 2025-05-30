@@ -76,30 +76,47 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
     }
   };
 
-  const formatReminderTime = (reminderDateTime?: string): string => {
-    if (!reminderDateTime) return '';
+  const formatReminderInfo = (note: Note): string => {
+    // Nếu có reminderDateTime (đặt lịch cụ thể)
+    if (note.reminderDateTime) {
+      try {
+        const reminderDate = new Date(note.reminderDateTime);
+        const now = new Date();
+        const diffMs = reminderDate.getTime() - now.getTime();
 
-    try {
-      const reminderDate = new Date(reminderDateTime);
-      const now = new Date();
-      const diffMs = reminderDate.getTime() - now.getTime();
-
-      if (diffMs < 0) {
-        return 'Đã qua';
-      } else if (diffMs < 24 * 60 * 60 * 1000) {
-        return `Hôm nay ${format(reminderDate, 'HH:mm')}`;
-      } else if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-        return format(reminderDate, 'EEEE HH:mm', { locale: vi });
-      } else {
-        return format(reminderDate, 'dd/MM/yyyy HH:mm');
+        if (diffMs < 0) {
+          return 'Đã qua';
+        } else if (diffMs < 24 * 60 * 60 * 1000) {
+          return `Hôm nay ${format(reminderDate, 'HH:mm')}`;
+        } else if (diffMs < 7 * 24 * 60 * 60 * 1000) {
+          return format(reminderDate, 'EEEE HH:mm', { locale: vi });
+        } else {
+          return format(reminderDate, 'dd/MM/yyyy HH:mm');
+        }
+      } catch (error) {
+        return 'Lỗi thời gian';
       }
-    } catch (error) {
-      return 'Lỗi thời gian';
     }
+
+    // Nếu có associatedShiftIds (nhắc theo ca)
+    if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
+      const associatedShifts = state.shifts.filter(shift =>
+        note.associatedShiftIds!.includes(shift.id)
+      );
+
+      if (associatedShifts.length === 0) {
+        return 'Ca đã bị xóa';
+      }
+
+      const shiftNames = associatedShifts.map(shift => shift.name).join(', ');
+      return `Theo ca: ${shiftNames}`;
+    }
+
+    return '';
   };
 
   const renderNoteItem = (note: Note, index: number) => {
-    const reminderText = formatReminderTime(note.reminderDateTime);
+    const reminderText = formatReminderInfo(note);
 
     return (
       <View key={note.id}>

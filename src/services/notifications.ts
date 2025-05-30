@@ -82,7 +82,7 @@ class NotificationService {
   async scheduleShiftReminders(shift: Shift): Promise<void> {
     try {
       await this.initialize();
-      
+
       // Cancel existing shift reminders
       await this.cancelShiftReminders();
 
@@ -202,7 +202,7 @@ class NotificationService {
     try {
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const shiftNotifications = scheduledNotifications.filter(
-        notification => 
+        notification =>
           notification.identifier.startsWith('departure_') ||
           notification.identifier.startsWith('checkin_') ||
           notification.identifier.startsWith('checkout_')
@@ -302,6 +302,48 @@ class NotificationService {
     }
   }
 
+  async scheduleWeeklyShiftReminder(reminderDate: Date): Promise<void> {
+    try {
+      await this.initialize();
+
+      // Cancel existing weekly reminders
+      await this.cancelWeeklyReminders();
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: `weekly_reminder_${Date.now()}`,
+        content: {
+          title: '📅 Kết thúc tuần làm việc',
+          body: 'Đã kết thúc tuần làm việc. Bạn có muốn kiểm tra và thay đổi ca cho tuần tới không?',
+          categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
+          data: {
+            type: 'weekly_reminder',
+            action: 'check_shifts',
+          },
+        },
+        trigger: {
+          date: reminderDate,
+        },
+      });
+    } catch (error) {
+      console.error('Error scheduling weekly shift reminder:', error);
+    }
+  }
+
+  async cancelWeeklyReminders(): Promise<void> {
+    try {
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const weeklyReminders = scheduledNotifications.filter(
+        notification => notification.identifier.startsWith('weekly_reminder_')
+      );
+
+      for (const notification of weeklyReminders) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+      }
+    } catch (error) {
+      console.error('Error canceling weekly reminders:', error);
+    }
+  }
+
   async showAlarmNotification(alarmData: AlarmData): Promise<void> {
     try {
       await this.initialize();
@@ -311,8 +353,8 @@ class NotificationService {
         content: {
           title: alarmData.title,
           body: alarmData.message,
-          categoryIdentifier: alarmData.type === 'shift_reminder' 
-            ? NOTIFICATION_CATEGORIES.SHIFT_REMINDER 
+          categoryIdentifier: alarmData.type === 'shift_reminder'
+            ? NOTIFICATION_CATEGORIES.SHIFT_REMINDER
             : NOTIFICATION_CATEGORIES.NOTE_REMINDER,
           data: {
             type: 'alarm',

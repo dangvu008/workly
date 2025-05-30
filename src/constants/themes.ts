@@ -1,4 +1,5 @@
 import { MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
+import { StyleSheet } from 'react-native';
 
 export const lightTheme = {
   ...MD3LightTheme,
@@ -88,7 +89,7 @@ export const darkTheme = {
   },
 };
 
-export const commonStyles = {
+export const commonStyles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
@@ -202,4 +203,4 @@ export const commonStyles = {
   paddingLarge: {
     padding: 16,
   },
-};
+});

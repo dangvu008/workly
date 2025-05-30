@@ -19,9 +19,10 @@ export interface UserSettings {
   };
   notesDisplayCount: 2 | 3 | 5;
   rotationConfig?: {
-    shiftIds: string[];
-    frequency: 'weekly' | 'biweekly' | 'monthly';
-    lastAppliedDate?: string;
+    rotationShifts: string[];
+    rotationFrequency: 'weekly' | 'biweekly' | 'triweekly' | 'monthly';
+    rotationLastAppliedDate?: string;
+    currentRotationIndex: number;
   };
 }
 
@@ -61,6 +62,21 @@ export interface DailyWorkStatus {
   lateMinutes: number;
   earlyMinutes: number;
   isHolidayWork: boolean;
+}
+
+// New DailyWorkStatus with enhanced logic
+export interface DailyWorkStatusNew {
+  date: string;
+  status: 'DU_CONG' | 'DI_MUON' | 'VE_SOM' | 'DI_MUON_VE_SOM' | 'CHUA_DI' | 'DA_DI_CHUA_VAO' | 'CHUA_RA';
+  vaoLogTime: string | null; // ISO 8601 timestamp
+  raLogTime: string | null; // ISO 8601 timestamp
+  standardHours: number; // Calculated based on logic
+  otHours: number; // Overtime hours
+  totalHours: number; // Total work hours
+  sundayHours: number; // Sunday work hours
+  nightHours: number; // Night work hours (22:00-06:00)
+  isHolidayWork: boolean; // Whether this is holiday work
+  notes: string; // Additional notes
 }
 
 export interface Note {
@@ -103,19 +119,24 @@ export interface PublicHoliday {
 }
 
 // Navigation types
+export type TabParamList = {
+  HomeTab: undefined;
+  ShiftsTab: undefined;
+  NotesTab: undefined;
+  StatisticsTab: undefined;
+  SettingsTab: undefined;
+};
+
 export type RootStackParamList = {
-  Home: undefined;
-  Settings: undefined;
+  MainTabs: undefined;
   ShiftManagement: { mode?: 'select_rotation' };
   AddEditShift: { shiftId?: string; applyImmediately?: boolean };
-  Notes: undefined;
   NoteDetail: { noteId?: string };
-  Statistics: undefined;
   WeatherDetail: undefined;
 };
 
 // Multi-function button states
-export type ButtonState = 
+export type ButtonState =
   | 'go_work'
   | 'waiting_checkin'
   | 'check_in'
@@ -126,7 +147,7 @@ export type ButtonState =
   | 'completed';
 
 // Weekly status icons
-export type WeeklyStatusIcon = 
+export type WeeklyStatusIcon =
   | '✅' // completed
   | '❗' // late
   | '⏰' // early

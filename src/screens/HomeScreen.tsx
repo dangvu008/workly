@@ -9,10 +9,16 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { commonStyles } from '../constants/themes';
-import { RootStackParamList } from '../types';
+import { TabParamList, RootStackParamList } from '../types';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { workManager } from '../services/workManager';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<TabParamList, 'HomeTab'>,
+  StackNavigationProp<RootStackParamList>
+>;
 
 interface HomeScreenProps {
   navigation: HomeScreenNavigationProp;
@@ -49,17 +55,19 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   const getAttendanceHistory = () => {
-    // This would show today's attendance logs
-    // For now, we'll show a simple status
-    const today = format(new Date(), 'yyyy-MM-dd');
+    // Only show history if within active window
+    if (!state.timeDisplayInfo?.shouldShowHistory) {
+      return [];
+    }
+
     const todayStatus = state.todayStatus;
-    
+
     if (!todayStatus) {
       return [];
     }
 
     const history = [];
-    
+
     if (todayStatus.vaoLogTime) {
       history.push({
         action: 'Chấm công vào',
@@ -67,7 +75,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         icon: '📥',
       });
     }
-    
+
     if (todayStatus.raLogTime) {
       history.push({
         action: 'Chấm công ra',
@@ -79,43 +87,26 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     return history;
   };
 
-  const getTopNotes = () => {
-    const count = state.settings?.notesDisplayCount || 3;
-    
-    // Sort notes by priority and reminder time
-    const sortedNotes = [...state.notes]
-      .filter(note => {
-        // Show notes with upcoming reminders or priority notes
-        if (note.isPriority) return true;
-        if (note.reminderDateTime) {
-          const reminderTime = new Date(note.reminderDateTime);
-          const now = new Date();
-          const timeDiff = reminderTime.getTime() - now.getTime();
-          return timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000; // Next 24 hours
-        }
-        return false;
-      })
-      .sort((a, b) => {
-        // Priority notes first
-        if (a.isPriority && !b.isPriority) return -1;
-        if (!a.isPriority && b.isPriority) return 1;
-        
-        // Then by reminder time
-        if (a.reminderDateTime && b.reminderDateTime) {
-          return new Date(a.reminderDateTime).getTime() - new Date(b.reminderDateTime).getTime();
-        }
-        if (a.reminderDateTime && !b.reminderDateTime) return -1;
-        if (!a.reminderDateTime && b.reminderDateTime) return 1;
-        
-        // Finally by updated time
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-      });
+  const [topNotes, setTopNotes] = React.useState<any[]>([]);
 
-    return sortedNotes.slice(0, count);
+  // Load priority notes using workManager
+  const loadTopNotes = async () => {
+    try {
+      const count = state.settings?.notesDisplayCount || 3;
+      const priorityNotes = await workManager.getPriorityNotes(state.notes, count);
+      setTopNotes(priorityNotes);
+    } catch (error) {
+      console.error('Error loading top notes:', error);
+      setTopNotes([]);
+    }
   };
 
+  // Load top notes when notes or settings change
+  React.useEffect(() => {
+    loadTopNotes();
+  }, [state.notes, state.settings?.notesDisplayCount, state.activeShift]);
+
   const attendanceHistory = getAttendanceHistory();
-  const topNotes = getTopNotes();
 
   if (state.isLoading) {
     return (
@@ -149,7 +140,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             icon="cog"
             size={24}
             iconColor={theme.colors.onBackground}
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() => navigation.navigate('SettingsTab')}
           />
         </View>
 
@@ -167,7 +158,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                 icon="pencil"
                 size={20}
                 iconColor={theme.colors.primary}
-                onPress={() => navigation.navigate('ShiftManagement')}
+                onPress={() => navigation.navigate('ShiftsTab')}
               />
             </View>
             <Text style={[styles.shiftName, { color: theme.colors.primary }]}>
@@ -181,11 +172,29 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </Card>
 
-        {/* Multi-Function Button */}
-        {state.settings?.multiButtonMode === 'simple' ? (
-          <SimpleMultiFunctionButton />
-        ) : (
-          <MultiFunctionButton />
+        {/* Multi-Function Button - Only show if within active window */}
+        {state.timeDisplayInfo?.shouldShowButton && (
+          state.settings?.multiButtonMode === 'simple' ? (
+            <SimpleMultiFunctionButton />
+          ) : (
+            <MultiFunctionButton />
+          )
+        )}
+
+        {/* Time Display Info for debugging */}
+        {state.timeDisplayInfo && !state.timeDisplayInfo.shouldShowButton && (
+          <Card style={[commonStyles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Card.Content>
+              <Text style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>
+                {state.timeDisplayInfo.currentPhase === 'inactive' &&
+                  `Nút sẽ hiện lại sau ${Math.floor(state.timeDisplayInfo.timeUntilNextReset / 60)}h ${state.timeDisplayInfo.timeUntilNextReset % 60}m`
+                }
+                {state.timeDisplayInfo.currentPhase === 'after_work' &&
+                  'Đã kết thúc ca làm việc'
+                }
+              </Text>
+            </Card.Content>
+          </Card>
         )}
 
         {/* Attendance History */}
@@ -227,7 +236,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                 icon="format-list-bulleted"
                 size={20}
                 iconColor={theme.colors.primary}
-                onPress={() => navigation.navigate('Notes')}
+                onPress={() => navigation.navigate('NotesTab')}
               />
             </View>
 
@@ -241,13 +250,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                           <Text style={styles.priorityIcon}>⭐</Text>
                         )}
                         <View style={styles.noteText}>
-                          <Text 
+                          <Text
                             style={[styles.noteTitle, { color: theme.colors.onSurface }]}
                             numberOfLines={1}
                           >
                             {note.title}
                           </Text>
-                          <Text 
+                          <Text
                             style={[styles.noteDescription, { color: theme.colors.onSurfaceVariant }]}
                             numberOfLines={2}
                           >
@@ -287,7 +296,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
             <Button
               mode="outlined"
-              onPress={() => navigation.navigate('NoteDetail')}
+              onPress={() => navigation.navigate('NoteDetail', {})}
               style={styles.addNoteButton}
               icon="plus"
             >
@@ -404,5 +413,9 @@ const styles = StyleSheet.create({
   },
   addNoteButton: {
     marginTop: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

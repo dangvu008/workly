@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { 
-  UserSettings, 
-  Shift, 
-  Note, 
-  WeatherData, 
-  ButtonState, 
-  DailyWorkStatus 
+import {
+  UserSettings,
+  Shift,
+  Note,
+  WeatherData,
+  ButtonState,
+  DailyWorkStatus
 } from '../types';
 import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
@@ -24,6 +24,13 @@ interface AppState {
   currentButtonState: ButtonState;
   todayStatus: DailyWorkStatus | null;
   weeklyStatus: Record<string, DailyWorkStatus>;
+  timeDisplayInfo: {
+    isActiveWindow: boolean;
+    shouldShowButton: boolean;
+    shouldShowHistory: boolean;
+    timeUntilNextReset: number;
+    currentPhase: 'before_work' | 'work_time' | 'after_work' | 'inactive';
+  } | null;
 }
 
 // Action types
@@ -37,6 +44,7 @@ type AppAction =
   | { type: 'SET_BUTTON_STATE'; payload: ButtonState }
   | { type: 'SET_TODAY_STATUS'; payload: DailyWorkStatus | null }
   | { type: 'SET_WEEKLY_STATUS'; payload: Record<string, DailyWorkStatus> }
+  | { type: 'SET_TIME_DISPLAY_INFO'; payload: AppState['timeDisplayInfo'] }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<UserSettings> }
   | { type: 'ADD_SHIFT'; payload: Shift }
   | { type: 'UPDATE_SHIFT'; payload: { id: string; updates: Partial<Shift> } }
@@ -56,6 +64,7 @@ const initialState: AppState = {
   currentButtonState: 'go_work',
   todayStatus: null,
   weeklyStatus: {},
+  timeDisplayInfo: null,
 };
 
 // Reducer
@@ -63,40 +72,43 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
-    
+
     case 'SET_SETTINGS':
       return { ...state, settings: action.payload };
-    
+
     case 'SET_SHIFTS':
       return { ...state, shifts: action.payload };
-    
+
     case 'SET_ACTIVE_SHIFT':
       return { ...state, activeShift: action.payload };
-    
+
     case 'SET_NOTES':
       return { ...state, notes: action.payload };
-    
+
     case 'SET_WEATHER_DATA':
       return { ...state, weatherData: action.payload };
-    
+
     case 'SET_BUTTON_STATE':
       return { ...state, currentButtonState: action.payload };
-    
+
     case 'SET_TODAY_STATUS':
       return { ...state, todayStatus: action.payload };
-    
+
     case 'SET_WEEKLY_STATUS':
       return { ...state, weeklyStatus: action.payload };
-    
+
+    case 'SET_TIME_DISPLAY_INFO':
+      return { ...state, timeDisplayInfo: action.payload };
+
     case 'UPDATE_SETTINGS':
-      return { 
-        ...state, 
-        settings: state.settings ? { ...state.settings, ...action.payload } : null 
+      return {
+        ...state,
+        settings: state.settings ? { ...state.settings, ...action.payload } : null
       };
-    
+
     case 'ADD_SHIFT':
       return { ...state, shifts: [...state.shifts, action.payload] };
-    
+
     case 'UPDATE_SHIFT':
       return {
         ...state,
@@ -109,17 +121,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
           ? { ...state.activeShift, ...action.payload.updates }
           : state.activeShift,
       };
-    
+
     case 'DELETE_SHIFT':
       return {
         ...state,
         shifts: state.shifts.filter(shift => shift.id !== action.payload),
         activeShift: state.activeShift?.id === action.payload ? null : state.activeShift,
       };
-    
+
     case 'ADD_NOTE':
       return { ...state, notes: [...state.notes, action.payload] };
-    
+
     case 'UPDATE_NOTE':
       return {
         ...state,
@@ -129,13 +141,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : note
         ),
       };
-    
+
     case 'DELETE_NOTE':
       return {
         ...state,
         notes: state.notes.filter(note => note.id !== action.payload),
       };
-    
+
     default:
       return state;
   }
@@ -160,6 +172,7 @@ interface AppContextType {
     refreshWeatherData: () => Promise<void>;
     refreshButtonState: () => Promise<void>;
     refreshWeeklyStatus: () => Promise<void>;
+    refreshTimeDisplayInfo: () => Promise<void>;
   };
 }
 
@@ -208,14 +221,18 @@ export function AppProvider({ children }: AppProviderProps) {
       // Load weekly status
       await refreshWeeklyStatus();
 
+      // Load time display info
+      await refreshTimeDisplayInfo();
+
       // Load weather data
       if (settings.weatherWarningEnabled) {
         const weatherData = await weatherService.getWeatherData();
         dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
       }
 
-      // Check for shift rotation
+      // Check for shift rotation and schedule reminders
       await workManager.checkAndRotateShifts();
+      await workManager.scheduleWeeklyReminder();
 
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -247,15 +264,38 @@ export function AppProvider({ children }: AppProviderProps) {
       const activeShift = shiftId ? state.shifts.find(s => s.id === shiftId) || null : null;
       dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
 
+      // Handle rotation config if in rotate mode
+      if (state.settings?.changeShiftReminderMode === 'rotate' && state.settings.rotationConfig && shiftId) {
+        const rotationShifts = state.settings.rotationConfig.rotationShifts;
+        const newIndex = rotationShifts.findIndex(id => id === shiftId);
+
+        if (newIndex >= 0) {
+          // Update rotation index and reset last applied date
+          await storageService.updateUserSettings({
+            rotationConfig: {
+              ...state.settings.rotationConfig,
+              currentRotationIndex: newIndex,
+              rotationLastAppliedDate: new Date().toISOString(),
+            }
+          });
+        } else {
+          // Shift not in rotation list - show warning
+          console.warn('Selected shift is not in rotation list');
+        }
+      }
+
       // Schedule new shift reminders
       if (activeShift) {
         await notificationService.scheduleShiftReminders(activeShift);
+        await workManager.scheduleWeeklyReminder();
       } else {
         await notificationService.cancelShiftReminders();
+        await notificationService.cancelWeeklyReminders();
       }
 
-      // Refresh button state
+      // Refresh button state and time display info
       await refreshButtonState();
+      await refreshTimeDisplayInfo();
     } catch (error) {
       console.error('Error setting active shift:', error);
       throw error;
@@ -363,11 +403,11 @@ export function AppProvider({ children }: AppProviderProps) {
   const handleButtonPress = async () => {
     try {
       await workManager.handleButtonPress(state.currentButtonState);
-      
+
       // Refresh state
       await refreshButtonState();
       await refreshWeeklyStatus();
-      
+
       const today = format(new Date(), 'yyyy-MM-dd');
       const todayStatus = await storageService.getDailyWorkStatusForDate(today);
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
@@ -382,7 +422,7 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       await workManager.resetDailyStatus(today);
-      
+
       // Refresh state
       await refreshButtonState();
       await refreshWeeklyStatus();
@@ -421,22 +461,32 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       const weeklyStatus: Record<string, DailyWorkStatus> = {};
       const today = new Date();
-      
+
       // Get status for the past 7 days
       for (let i = -6; i <= 0; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = format(date, 'yyyy-MM-dd');
-        
+
         const status = await storageService.getDailyWorkStatusForDate(dateString);
         if (status) {
           weeklyStatus[dateString] = status;
         }
       }
-      
+
       dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
     } catch (error) {
       console.error('Error refreshing weekly status:', error);
+    }
+  };
+
+  // Refresh time display info
+  const refreshTimeDisplayInfo = async () => {
+    try {
+      const timeDisplayInfo = await workManager.getTimeDisplayInfo();
+      dispatch({ type: 'SET_TIME_DISPLAY_INFO', payload: timeDisplayInfo });
+    } catch (error) {
+      console.error('Error refreshing time display info:', error);
     }
   };
 
@@ -445,11 +495,19 @@ export function AppProvider({ children }: AppProviderProps) {
     loadInitialData();
   }, []);
 
-  // Auto-refresh button state every minute
+  // Refresh time display info every minute
   useEffect(() => {
-    const interval = setInterval(refreshButtonState, 60000);
+    const interval = setInterval(() => {
+      if (!state.isLoading && state.activeShift) {
+        refreshTimeDisplayInfo();
+        refreshButtonState();
+      }
+    }, 60000); // Every minute
+
     return () => clearInterval(interval);
-  }, []);
+  }, [state.isLoading, state.activeShift]);
+
+
 
   const contextValue: AppContextType = {
     state,
@@ -469,6 +527,7 @@ export function AppProvider({ children }: AppProviderProps) {
       refreshWeatherData,
       refreshButtonState,
       refreshWeeklyStatus,
+      refreshTimeDisplayInfo,
     },
   };
 

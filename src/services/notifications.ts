@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { isRunningInExpoGo } from 'expo';
 import { AlarmData, Shift, Note } from '../types';
 import { NOTIFICATION_CATEGORIES } from '../constants';
 import { storageService } from './storage';
@@ -7,7 +8,8 @@ import { storageService } from './storage';
 // Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -20,6 +22,14 @@ class NotificationService {
     if (this.isInitialized) return;
 
     try {
+      // Check if running in Expo Go and warn about limitations
+      if (isRunningInExpoGo() && Platform.OS === 'android') {
+        console.warn(
+          '⚠️ Workly: Push notifications có thể không hoạt động đầy đủ trong Expo Go. ' +
+          'Để có trải nghiệm tốt nhất, hãy sử dụng development build hoặc build production.'
+        );
+      }
+
       // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -399,6 +409,61 @@ class NotificationService {
   // Add notification received listener
   addNotificationReceivedListener(listener: (notification: Notifications.Notification) => void): Notifications.Subscription {
     return Notifications.addNotificationReceivedListener(listener);
+  }
+
+  // Check if notifications are fully supported
+  async checkNotificationSupport(): Promise<{
+    isSupported: boolean;
+    isExpoGo: boolean;
+    hasPermission: boolean;
+    platform: string;
+    message: string;
+  }> {
+    const isExpoGo = isRunningInExpoGo();
+    const platform = Platform.OS;
+    const { status } = await Notifications.getPermissionsAsync();
+    const hasPermission = status === 'granted';
+
+    let isSupported = true;
+    let message = 'Notifications được hỗ trợ đầy đủ';
+
+    if (isExpoGo && platform === 'android') {
+      isSupported = false;
+      message = 'Push notifications không được hỗ trợ trong Expo Go trên Android. Sử dụng development build để có đầy đủ tính năng.';
+    } else if (isExpoGo) {
+      message = 'Một số tính năng notification có thể bị hạn chế trong Expo Go.';
+    } else if (!hasPermission) {
+      isSupported = false;
+      message = 'Cần cấp quyền notification để sử dụng tính năng nhắc nhở.';
+    }
+
+    return {
+      isSupported,
+      isExpoGo,
+      hasPermission,
+      platform,
+      message
+    };
+  }
+
+  // Test notification functionality
+  async testNotification(): Promise<void> {
+    try {
+      await this.initialize();
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: 'test_notification',
+        content: {
+          title: '🧪 Test Notification',
+          body: 'Workly notifications đang hoạt động bình thường!',
+          data: { type: 'test' },
+        },
+        trigger: null, // Show immediately
+      });
+    } catch (error) {
+      console.error('Error testing notification:', error);
+      throw error;
+    }
   }
 }
 

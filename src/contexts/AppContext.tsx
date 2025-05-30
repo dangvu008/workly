@@ -1,0 +1,489 @@
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { 
+  UserSettings, 
+  Shift, 
+  Note, 
+  WeatherData, 
+  ButtonState, 
+  DailyWorkStatus 
+} from '../types';
+import { storageService } from '../services/storage';
+import { workManager } from '../services/workManager';
+import { weatherService } from '../services/weather';
+import { notificationService } from '../services/notifications';
+import { format } from 'date-fns';
+
+// State interface
+interface AppState {
+  isLoading: boolean;
+  settings: UserSettings | null;
+  shifts: Shift[];
+  activeShift: Shift | null;
+  notes: Note[];
+  weatherData: WeatherData | null;
+  currentButtonState: ButtonState;
+  todayStatus: DailyWorkStatus | null;
+  weeklyStatus: Record<string, DailyWorkStatus>;
+}
+
+// Action types
+type AppAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_SETTINGS'; payload: UserSettings }
+  | { type: 'SET_SHIFTS'; payload: Shift[] }
+  | { type: 'SET_ACTIVE_SHIFT'; payload: Shift | null }
+  | { type: 'SET_NOTES'; payload: Note[] }
+  | { type: 'SET_WEATHER_DATA'; payload: WeatherData | null }
+  | { type: 'SET_BUTTON_STATE'; payload: ButtonState }
+  | { type: 'SET_TODAY_STATUS'; payload: DailyWorkStatus | null }
+  | { type: 'SET_WEEKLY_STATUS'; payload: Record<string, DailyWorkStatus> }
+  | { type: 'UPDATE_SETTINGS'; payload: Partial<UserSettings> }
+  | { type: 'ADD_SHIFT'; payload: Shift }
+  | { type: 'UPDATE_SHIFT'; payload: { id: string; updates: Partial<Shift> } }
+  | { type: 'DELETE_SHIFT'; payload: string }
+  | { type: 'ADD_NOTE'; payload: Note }
+  | { type: 'UPDATE_NOTE'; payload: { id: string; updates: Partial<Note> } }
+  | { type: 'DELETE_NOTE'; payload: string };
+
+// Initial state
+const initialState: AppState = {
+  isLoading: true,
+  settings: null,
+  shifts: [],
+  activeShift: null,
+  notes: [],
+  weatherData: null,
+  currentButtonState: 'go_work',
+  todayStatus: null,
+  weeklyStatus: {},
+};
+
+// Reducer
+function appReducer(state: AppState, action: AppAction): AppState {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    
+    case 'SET_SETTINGS':
+      return { ...state, settings: action.payload };
+    
+    case 'SET_SHIFTS':
+      return { ...state, shifts: action.payload };
+    
+    case 'SET_ACTIVE_SHIFT':
+      return { ...state, activeShift: action.payload };
+    
+    case 'SET_NOTES':
+      return { ...state, notes: action.payload };
+    
+    case 'SET_WEATHER_DATA':
+      return { ...state, weatherData: action.payload };
+    
+    case 'SET_BUTTON_STATE':
+      return { ...state, currentButtonState: action.payload };
+    
+    case 'SET_TODAY_STATUS':
+      return { ...state, todayStatus: action.payload };
+    
+    case 'SET_WEEKLY_STATUS':
+      return { ...state, weeklyStatus: action.payload };
+    
+    case 'UPDATE_SETTINGS':
+      return { 
+        ...state, 
+        settings: state.settings ? { ...state.settings, ...action.payload } : null 
+      };
+    
+    case 'ADD_SHIFT':
+      return { ...state, shifts: [...state.shifts, action.payload] };
+    
+    case 'UPDATE_SHIFT':
+      return {
+        ...state,
+        shifts: state.shifts.map(shift =>
+          shift.id === action.payload.id
+            ? { ...shift, ...action.payload.updates }
+            : shift
+        ),
+        activeShift: state.activeShift?.id === action.payload.id
+          ? { ...state.activeShift, ...action.payload.updates }
+          : state.activeShift,
+      };
+    
+    case 'DELETE_SHIFT':
+      return {
+        ...state,
+        shifts: state.shifts.filter(shift => shift.id !== action.payload),
+        activeShift: state.activeShift?.id === action.payload ? null : state.activeShift,
+      };
+    
+    case 'ADD_NOTE':
+      return { ...state, notes: [...state.notes, action.payload] };
+    
+    case 'UPDATE_NOTE':
+      return {
+        ...state,
+        notes: state.notes.map(note =>
+          note.id === action.payload.id
+            ? { ...note, ...action.payload.updates }
+            : note
+        ),
+      };
+    
+    case 'DELETE_NOTE':
+      return {
+        ...state,
+        notes: state.notes.filter(note => note.id !== action.payload),
+      };
+    
+    default:
+      return state;
+  }
+}
+
+// Context
+interface AppContextType {
+  state: AppState;
+  dispatch: React.Dispatch<AppAction>;
+  actions: {
+    loadInitialData: () => Promise<void>;
+    updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
+    setActiveShift: (shiftId: string | null) => Promise<void>;
+    addShift: (shift: Shift, applyImmediately?: boolean) => Promise<void>;
+    updateShift: (shiftId: string, updates: Partial<Shift>) => Promise<void>;
+    deleteShift: (shiftId: string) => Promise<void>;
+    addNote: (note: Note) => Promise<void>;
+    updateNote: (noteId: string, updates: Partial<Note>) => Promise<void>;
+    deleteNote: (noteId: string) => Promise<void>;
+    handleButtonPress: () => Promise<void>;
+    resetDailyStatus: () => Promise<void>;
+    refreshWeatherData: () => Promise<void>;
+    refreshButtonState: () => Promise<void>;
+    refreshWeeklyStatus: () => Promise<void>;
+  };
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+// Provider component
+interface AppProviderProps {
+  children: ReactNode;
+}
+
+export function AppProvider({ children }: AppProviderProps) {
+  const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Load initial data
+  const loadInitialData = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+
+      // Initialize notification service
+      await notificationService.initialize();
+
+      // Load all data
+      const [settings, shifts, activeShiftId, notes] = await Promise.all([
+        storageService.getUserSettings(),
+        storageService.getShiftList(),
+        storageService.getActiveShiftId(),
+        storageService.getNotes(),
+      ]);
+
+      dispatch({ type: 'SET_SETTINGS', payload: settings });
+      dispatch({ type: 'SET_SHIFTS', payload: shifts });
+      dispatch({ type: 'SET_NOTES', payload: notes });
+
+      // Set active shift
+      const activeShift = activeShiftId ? shifts.find(s => s.id === activeShiftId) || null : null;
+      dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
+
+      // Load today's status and button state
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const todayStatus = await storageService.getDailyWorkStatusForDate(today);
+      const buttonState = await workManager.getCurrentButtonState(today);
+
+      dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
+      dispatch({ type: 'SET_BUTTON_STATE', payload: buttonState });
+
+      // Load weekly status
+      await refreshWeeklyStatus();
+
+      // Load weather data
+      if (settings.weatherWarningEnabled) {
+        const weatherData = await weatherService.getWeatherData();
+        dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
+      }
+
+      // Check for shift rotation
+      await workManager.checkAndRotateShifts();
+
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
+  // Update settings
+  const updateSettings = async (updates: Partial<UserSettings>) => {
+    try {
+      const newSettings = await storageService.updateUserSettings(updates);
+      dispatch({ type: 'SET_SETTINGS', payload: newSettings });
+
+      // If weather settings changed, refresh weather data
+      if ('weatherWarningEnabled' in updates || 'weatherLocation' in updates) {
+        await refreshWeatherData();
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      throw error;
+    }
+  };
+
+  // Set active shift
+  const setActiveShift = async (shiftId: string | null) => {
+    try {
+      await storageService.setActiveShiftId(shiftId);
+      const activeShift = shiftId ? state.shifts.find(s => s.id === shiftId) || null : null;
+      dispatch({ type: 'SET_ACTIVE_SHIFT', payload: activeShift });
+
+      // Schedule new shift reminders
+      if (activeShift) {
+        await notificationService.scheduleShiftReminders(activeShift);
+      } else {
+        await notificationService.cancelShiftReminders();
+      }
+
+      // Refresh button state
+      await refreshButtonState();
+    } catch (error) {
+      console.error('Error setting active shift:', error);
+      throw error;
+    }
+  };
+
+  // Add shift
+  const addShift = async (shift: Shift, applyImmediately: boolean = false) => {
+    try {
+      await storageService.addShift(shift);
+      dispatch({ type: 'ADD_SHIFT', payload: shift });
+
+      if (applyImmediately) {
+        await setActiveShift(shift.id);
+      }
+    } catch (error) {
+      console.error('Error adding shift:', error);
+      throw error;
+    }
+  };
+
+  // Update shift
+  const updateShift = async (shiftId: string, updates: Partial<Shift>) => {
+    try {
+      await storageService.updateShift(shiftId, updates);
+      dispatch({ type: 'UPDATE_SHIFT', payload: { id: shiftId, updates } });
+
+      // If this is the active shift, reschedule reminders
+      if (state.activeShift?.id === shiftId) {
+        const updatedShift = { ...state.activeShift, ...updates };
+        await notificationService.scheduleShiftReminders(updatedShift);
+      }
+    } catch (error) {
+      console.error('Error updating shift:', error);
+      throw error;
+    }
+  };
+
+  // Delete shift
+  const deleteShift = async (shiftId: string) => {
+    try {
+      await storageService.deleteShift(shiftId);
+      dispatch({ type: 'DELETE_SHIFT', payload: shiftId });
+
+      // If this was the active shift, clear it
+      if (state.activeShift?.id === shiftId) {
+        await storageService.setActiveShiftId(null);
+        await notificationService.cancelShiftReminders();
+      }
+    } catch (error) {
+      console.error('Error deleting shift:', error);
+      throw error;
+    }
+  };
+
+  // Add note
+  const addNote = async (note: Note) => {
+    try {
+      await storageService.addNote(note);
+      dispatch({ type: 'ADD_NOTE', payload: note });
+
+      // Schedule reminder if set
+      if (note.reminderDateTime) {
+        await notificationService.scheduleNoteReminder(note);
+      }
+    } catch (error) {
+      console.error('Error adding note:', error);
+      throw error;
+    }
+  };
+
+  // Update note
+  const updateNote = async (noteId: string, updates: Partial<Note>) => {
+    try {
+      await storageService.updateNote(noteId, updates);
+      dispatch({ type: 'UPDATE_NOTE', payload: { id: noteId, updates } });
+
+      // Update reminder
+      await notificationService.cancelNoteReminder(noteId);
+      const updatedNote = state.notes.find(n => n.id === noteId);
+      if (updatedNote && updates.reminderDateTime) {
+        await notificationService.scheduleNoteReminder({ ...updatedNote, ...updates } as Note);
+      }
+    } catch (error) {
+      console.error('Error updating note:', error);
+      throw error;
+    }
+  };
+
+  // Delete note
+  const deleteNote = async (noteId: string) => {
+    try {
+      await storageService.deleteNote(noteId);
+      dispatch({ type: 'DELETE_NOTE', payload: noteId });
+
+      // Cancel reminder
+      await notificationService.cancelNoteReminder(noteId);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      throw error;
+    }
+  };
+
+  // Handle button press
+  const handleButtonPress = async () => {
+    try {
+      await workManager.handleButtonPress(state.currentButtonState);
+      
+      // Refresh state
+      await refreshButtonState();
+      await refreshWeeklyStatus();
+      
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const todayStatus = await storageService.getDailyWorkStatusForDate(today);
+      dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
+    } catch (error) {
+      console.error('Error handling button press:', error);
+      throw error;
+    }
+  };
+
+  // Reset daily status
+  const resetDailyStatus = async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      await workManager.resetDailyStatus(today);
+      
+      // Refresh state
+      await refreshButtonState();
+      await refreshWeeklyStatus();
+      dispatch({ type: 'SET_TODAY_STATUS', payload: null });
+    } catch (error) {
+      console.error('Error resetting daily status:', error);
+      throw error;
+    }
+  };
+
+  // Refresh weather data
+  const refreshWeatherData = async () => {
+    try {
+      if (state.settings?.weatherWarningEnabled) {
+        const weatherData = await weatherService.getWeatherData(true);
+        dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
+      }
+    } catch (error) {
+      console.error('Error refreshing weather data:', error);
+    }
+  };
+
+  // Refresh button state
+  const refreshButtonState = async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const buttonState = await workManager.getCurrentButtonState(today);
+      dispatch({ type: 'SET_BUTTON_STATE', payload: buttonState });
+    } catch (error) {
+      console.error('Error refreshing button state:', error);
+    }
+  };
+
+  // Refresh weekly status
+  const refreshWeeklyStatus = async () => {
+    try {
+      const weeklyStatus: Record<string, DailyWorkStatus> = {};
+      const today = new Date();
+      
+      // Get status for the past 7 days
+      for (let i = -6; i <= 0; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateString = format(date, 'yyyy-MM-dd');
+        
+        const status = await storageService.getDailyWorkStatusForDate(dateString);
+        if (status) {
+          weeklyStatus[dateString] = status;
+        }
+      }
+      
+      dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
+    } catch (error) {
+      console.error('Error refreshing weekly status:', error);
+    }
+  };
+
+  // Initialize app on mount
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // Auto-refresh button state every minute
+  useEffect(() => {
+    const interval = setInterval(refreshButtonState, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const contextValue: AppContextType = {
+    state,
+    dispatch,
+    actions: {
+      loadInitialData,
+      updateSettings,
+      setActiveShift,
+      addShift,
+      updateShift,
+      deleteShift,
+      addNote,
+      updateNote,
+      deleteNote,
+      handleButtonPress,
+      resetDailyStatus,
+      refreshWeatherData,
+      refreshButtonState,
+      refreshWeeklyStatus,
+    },
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+// Hook to use the context
+export function useApp() {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+}

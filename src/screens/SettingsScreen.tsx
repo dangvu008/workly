@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import {
   Text,
   Card,
@@ -34,6 +34,19 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const [modeMenuVisible, setModeMenuVisible] = useState(false);
 
+  // Status messages
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error' | 'info' | '';
+    message: string;
+  }>({ type: '', message: '' });
+
+  // Confirmation states
+  const [confirmStates, setConfirmStates] = useState({
+    resetWeatherLocation: false,
+    resetSampleNotes: false,
+    clearAllNotes: false,
+  });
+
   const settings = state.settings;
 
   if (!settings) {
@@ -46,86 +59,95 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 
   const handleBackupData = async () => {
     try {
-      Alert.alert('Sao lưu dữ liệu', 'Tính năng sao lưu sẽ được triển khai trong phiên bản tiếp theo.');
+      setStatusMessage({
+        type: 'info',
+        message: 'ℹ️ Tính năng sao lưu sẽ được triển khai trong phiên bản tiếp theo.'
+      });
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể sao lưu dữ liệu.');
+      setStatusMessage({
+        type: 'error',
+        message: '❌ Không thể sao lưu dữ liệu.'
+      });
     }
   };
 
   const handleRestoreData = async () => {
     try {
-      Alert.alert('Phục hồi dữ liệu', 'Tính năng phục hồi sẽ được triển khai trong phiên bản tiếp theo.');
+      setStatusMessage({
+        type: 'info',
+        message: 'ℹ️ Tính năng phục hồi sẽ được triển khai trong phiên bản tiếp theo.'
+      });
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể phục hồi dữ liệu.');
+      setStatusMessage({
+        type: 'error',
+        message: '❌ Không thể phục hồi dữ liệu.'
+      });
     }
   };
 
-  const handleResetWeatherLocation = async () => {
-    Alert.alert(
-      'Xác nhận',
-      'Bạn có muốn xóa vị trí đã lưu? Ứng dụng sẽ yêu cầu xác định vị trí lại khi bạn sử dụng tính năng chấm công.',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await actions.updateSettings({ weatherLocation: null });
-              Alert.alert('Thành công', 'Đã xóa vị trí đã lưu.');
-            } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa vị trí.');
-            }
-          }
-        }
-      ]
-    );
+  const handleResetWeatherLocation = () => {
+    setConfirmStates(prev => ({ ...prev, resetWeatherLocation: true }));
   };
 
-  const handleResetSampleNotes = async () => {
-    Alert.alert(
-      'Xác nhận',
-      'Bạn có muốn thay thế tất cả ghi chú hiện tại bằng dữ liệu mẫu không? Hành động này không thể hoàn tác.',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Thay thế',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { resetWithSampleNotes } = await import('../services/sampleData');
-              await resetWithSampleNotes();
-              Alert.alert('Thành công', 'Đã thay thế bằng dữ liệu mẫu. Vui lòng khởi động lại ứng dụng để thấy thay đổi.');
-            } catch (error) {
-              Alert.alert('Lỗi', 'Không thể thay thế dữ liệu.');
-            }
-          }
-        }
-      ]
-    );
+  const confirmResetWeatherLocation = async () => {
+    try {
+      setStatusMessage({ type: '', message: '' });
+      await actions.updateSettings({ weatherLocation: null });
+      setStatusMessage({
+        type: 'success',
+        message: '✅ Đã xóa vị trí đã lưu thành công!'
+      });
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        message: '❌ Không thể xóa vị trí. Vui lòng thử lại.'
+      });
+    }
+    setConfirmStates(prev => ({ ...prev, resetWeatherLocation: false }));
   };
 
-  const handleClearAllNotes = async () => {
-    Alert.alert(
-      'Xác nhận',
-      'Bạn có muốn xóa tất cả ghi chú không? Hành động này không thể hoàn tác.',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa tất cả',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { clearAllNotes } = await import('../services/sampleData');
-              await clearAllNotes();
-              Alert.alert('Thành công', 'Đã xóa tất cả ghi chú. Vui lòng khởi động lại ứng dụng để thấy thay đổi.');
-            } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa ghi chú.');
-            }
-          }
-        }
-      ]
-    );
+  const handleResetSampleNotes = () => {
+    setConfirmStates(prev => ({ ...prev, resetSampleNotes: true }));
+  };
+
+  const confirmResetSampleNotes = async () => {
+    try {
+      setStatusMessage({ type: '', message: '' });
+      const { resetWithSampleNotes } = await import('../services/sampleData');
+      await resetWithSampleNotes();
+      setStatusMessage({
+        type: 'success',
+        message: '✅ Đã thay thế bằng dữ liệu mẫu thành công! Vui lòng khởi động lại ứng dụng để thấy thay đổi.'
+      });
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        message: '❌ Không thể thay thế dữ liệu. Vui lòng thử lại.'
+      });
+    }
+    setConfirmStates(prev => ({ ...prev, resetSampleNotes: false }));
+  };
+
+  const handleClearAllNotes = () => {
+    setConfirmStates(prev => ({ ...prev, clearAllNotes: true }));
+  };
+
+  const confirmClearAllNotes = async () => {
+    try {
+      setStatusMessage({ type: '', message: '' });
+      const { clearAllNotes } = await import('../services/sampleData');
+      await clearAllNotes();
+      setStatusMessage({
+        type: 'success',
+        message: '✅ Đã xóa tất cả ghi chú thành công! Vui lòng khởi động lại ứng dụng để thấy thay đổi.'
+      });
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        message: '❌ Không thể xóa ghi chú. Vui lòng thử lại.'
+      });
+    }
+    setConfirmStates(prev => ({ ...prev, clearAllNotes: false }));
   };
 
   return (
@@ -377,6 +399,123 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
           </Card.Content>
         </Card>
+
+        {/* Status Messages */}
+        {statusMessage.message && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+            <Card.Content>
+              <Text style={[
+                styles.statusMessage,
+                {
+                  color: statusMessage.type === 'success'
+                    ? theme.colors.primary
+                    : statusMessage.type === 'error'
+                    ? theme.colors.error
+                    : theme.colors.onSurface
+                }
+              ]}>
+                {statusMessage.message}
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* Confirmation Dialogs */}
+        {confirmStates.resetWeatherLocation && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
+            <Card.Content>
+              <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
+                ⚠️ Xác nhận xóa vị trí
+              </Text>
+              <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
+                Bạn có muốn xóa vị trí đã lưu không?
+                {'\n'}Ứng dụng sẽ yêu cầu xác định vị trí lại khi bạn sử dụng tính năng chấm công.
+              </Text>
+              <View style={styles.confirmActions}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setConfirmStates(prev => ({ ...prev, resetWeatherLocation: false }))}
+                  style={styles.cancelButton}
+                  textColor={theme.colors.onErrorContainer}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={confirmResetWeatherLocation}
+                  style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
+                  textColor={theme.colors.onError}
+                >
+                  Xóa
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
+        {confirmStates.resetSampleNotes && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
+            <Card.Content>
+              <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
+                ⚠️ Xác nhận thay thế dữ liệu
+              </Text>
+              <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
+                Bạn có muốn thay thế tất cả ghi chú hiện tại bằng dữ liệu mẫu không?
+                {'\n'}Hành động này không thể hoàn tác.
+              </Text>
+              <View style={styles.confirmActions}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setConfirmStates(prev => ({ ...prev, resetSampleNotes: false }))}
+                  style={styles.cancelButton}
+                  textColor={theme.colors.onErrorContainer}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={confirmResetSampleNotes}
+                  style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
+                  textColor={theme.colors.onError}
+                >
+                  Thay thế
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
+        {confirmStates.clearAllNotes && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
+            <Card.Content>
+              <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
+                ⚠️ Xác nhận xóa tất cả
+              </Text>
+              <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
+                Bạn có muốn xóa tất cả ghi chú không?
+                {'\n'}Hành động này không thể hoàn tác.
+              </Text>
+              <View style={styles.confirmActions}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setConfirmStates(prev => ({ ...prev, clearAllNotes: false }))}
+                  style={styles.cancelButton}
+                  textColor={theme.colors.onErrorContainer}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={confirmClearAllNotes}
+                  style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
+                  textColor={theme.colors.onError}
+                >
+                  Xóa tất cả
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -410,5 +549,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
+  },
+  statusMessage: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    borderColor: 'transparent',
+  },
+  confirmButton: {
+    flex: 1,
   },
 });

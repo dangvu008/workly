@@ -63,6 +63,12 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
     duplicate: '',
   });
 
+  // Status messages
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error' | '';
+    message: string;
+  }>({ type: '', message: '' });
+
   useEffect(() => {
     if (existingNote) {
       // Determine reminder type based on existing data
@@ -167,75 +173,62 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
   const handleSave = async () => {
     if (!validateForm()) return;
 
-    const confirmMessage = isEditing
-      ? `Bạn có muốn lưu các thay đổi cho ghi chú "${formData.title.trim()}" không?`
-      : `Bạn có muốn tạo ghi chú mới "${formData.title.trim()}" không?`;
+    try {
+      setStatusMessage({ type: '', message: '' }); // Clear previous status
 
-    Alert.alert(
-      'Xác nhận',
-      confirmMessage,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: isEditing ? 'Lưu' : 'Tạo',
-          onPress: async () => {
-            try {
-              const noteData: Note = {
-                id: isEditing ? noteId! : `note_${Date.now()}`,
-                title: formData.title.trim(),
-                content: formData.content.trim(),
-                isPriority: formData.isPriority,
-                reminderDateTime: (formData.hasReminder && formData.reminderType === 'specific')
-                  ? formData.reminderDateTime.toISOString()
-                  : undefined,
-                associatedShiftIds: (formData.hasReminder && formData.reminderType === 'shift' && formData.associatedShiftIds.length > 0)
-                  ? formData.associatedShiftIds
-                  : undefined,
-                createdAt: existingNote?.createdAt || new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
+      const noteData: Note = {
+        id: isEditing ? noteId! : `note_${Date.now()}`,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        isPriority: formData.isPriority,
+        reminderDateTime: (formData.hasReminder && formData.reminderType === 'specific')
+          ? formData.reminderDateTime.toISOString()
+          : undefined,
+        associatedShiftIds: (formData.hasReminder && formData.reminderType === 'shift' && formData.associatedShiftIds.length > 0)
+          ? formData.associatedShiftIds
+          : undefined,
+        createdAt: existingNote?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-              if (isEditing) {
-                await actions.updateNote(noteId!, noteData);
-                Alert.alert('Thành công', 'Đã cập nhật ghi chú.');
-              } else {
-                await actions.addNote(noteData);
-                Alert.alert('Thành công', 'Đã tạo ghi chú mới.');
-              }
+      if (isEditing) {
+        await actions.updateNote(noteId!, noteData);
+        setStatusMessage({ type: 'success', message: '✅ Đã cập nhật ghi chú thành công!' });
+      } else {
+        await actions.addNote(noteData);
+        setStatusMessage({ type: 'success', message: '✅ Đã tạo ghi chú mới thành công!' });
+      }
 
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Lỗi', 'Không thể lưu ghi chú.');
-            }
-          }
-        }
-      ]
-    );
+      // Auto navigate back after 2 seconds
+      setTimeout(() => {
+        navigation.goBack();
+      }, 2000);
+    } catch (error) {
+      setStatusMessage({ type: 'error', message: '❌ Không thể lưu ghi chú. Vui lòng thử lại.' });
+    }
   };
+
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   const handleDelete = () => {
     if (!isEditing) return;
+    setDeleteConfirm(true);
+  };
 
-    Alert.alert(
-      'Xác nhận xóa',
-      `Bạn có muốn xóa ghi chú "${formData.title}" không?`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await actions.deleteNote(noteId!);
-              Alert.alert('Thành công', 'Đã xóa ghi chú.');
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa ghi chú.');
-            }
-          }
-        }
-      ]
-    );
+  const confirmDelete = async () => {
+    try {
+      setStatusMessage({ type: '', message: '' }); // Clear previous status
+      await actions.deleteNote(noteId!);
+      setStatusMessage({ type: 'success', message: '✅ Đã xóa ghi chú thành công!' });
+
+      // Auto navigate back after 1.5 seconds
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
+    } catch (error) {
+      setStatusMessage({ type: 'error', message: '❌ Không thể xóa ghi chú. Vui lòng thử lại.' });
+    }
+    setDeleteConfirm(false);
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
@@ -501,6 +494,57 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
           </Card>
         )}
 
+        {/* Status Messages */}
+        {statusMessage.message && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+            <Card.Content>
+              <Text style={[
+                styles.statusMessage,
+                {
+                  color: statusMessage.type === 'success'
+                    ? theme.colors.primary
+                    : theme.colors.error
+                }
+              ]}>
+                {statusMessage.message}
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* Delete Confirmation */}
+        {deleteConfirm && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
+            <Card.Content>
+              <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
+                ⚠️ Xác nhận xóa
+              </Text>
+              <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
+                Bạn có chắc chắn muốn xóa ghi chú "{formData.title.trim()}" không?
+                {'\n'}Hành động này không thể hoàn tác.
+              </Text>
+              <View style={styles.confirmActions}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setDeleteConfirm(false)}
+                  style={styles.cancelButton}
+                  textColor={theme.colors.onErrorContainer}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={confirmDelete}
+                  style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
+                  textColor={theme.colors.onError}
+                >
+                  Xóa
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
         {/* Actions */}
         <View style={styles.actions}>
           <Button
@@ -516,7 +560,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
             {isEditing ? 'Lưu Thay Đổi' : 'Tạo Ghi Chú'}
           </Button>
 
-          {isEditing && (
+          {isEditing && !deleteConfirm && (
             <Button
               mode="outlined"
               onPress={handleDelete}
@@ -665,5 +709,35 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     borderColor: 'transparent',
+  },
+  statusMessage: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    borderColor: 'transparent',
+  },
+  confirmButton: {
+    flex: 1,
   },
 });

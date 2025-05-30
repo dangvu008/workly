@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { 
-  Text, 
-  TextInput, 
-  Button, 
-  Switch, 
-  Card, 
-  IconButton, 
+import { View, StyleSheet, ScrollView } from 'react-native';
+import {
+  Text,
+  TextInput,
+  Button,
+  Switch,
+  Card,
+  IconButton,
   useTheme,
-  Chip
+  Chip,
+  HelperText
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../contexts/AppContext';
@@ -31,11 +32,11 @@ interface AddEditShiftScreenProps {
 export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
-  
+
   const shiftId = route.params?.shiftId;
   const applyImmediately = route.params?.applyImmediately || false;
   const isEditing = !!shiftId;
-  
+
   const existingShift = isEditing ? state.shifts.find(s => s.id === shiftId) : null;
 
   const [formData, setFormData] = useState({
@@ -50,6 +51,19 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     workDays: [1, 2, 3, 4, 5], // Monday to Friday
     applyNow: applyImmediately,
   });
+
+  // Validation errors
+  const [errors, setErrors] = useState({
+    name: '',
+    workDays: '',
+    breakMinutes: '',
+  });
+
+  // Status messages
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error' | '';
+    message: string;
+  }>({ type: '', message: '' });
 
   useEffect(() => {
     if (existingShift) {
@@ -75,31 +89,58 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         ? prev.workDays.filter(d => d !== day)
         : [...prev.workDays, day].sort()
     }));
+    // Clear work days error when user makes changes
+    setErrors(prev => ({ ...prev, workDays: '' }));
+  };
+
+  // Helper functions to clear errors on input change
+  const handleNameChange = (text: string) => {
+    setFormData(prev => ({ ...prev, name: text }));
+    setErrors(prev => ({ ...prev, name: '' }));
+  };
+
+  const handleBreakMinutesChange = (value: number) => {
+    setFormData(prev => ({ ...prev, breakMinutes: value }));
+    setErrors(prev => ({ ...prev, breakMinutes: '' }));
   };
 
   const validateForm = (): boolean => {
+    const newErrors = {
+      name: '',
+      workDays: '',
+      breakMinutes: '',
+    };
+
+    let isValid = true;
+
+    // Name validation
     if (!formData.name.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên ca.');
-      return false;
+      newErrors.name = 'Tên ca là bắt buộc';
+      isValid = false;
     }
 
+    // Work days validation
     if (formData.workDays.length === 0) {
-      Alert.alert('Lỗi', 'Vui lòng chọn ít nhất một ngày làm việc.');
-      return false;
+      newErrors.workDays = 'Vui lòng chọn ít nhất một ngày làm việc';
+      isValid = false;
     }
 
+    // Break minutes validation
     if (formData.breakMinutes < 0) {
-      Alert.alert('Lỗi', 'Thời gian nghỉ không thể âm.');
-      return false;
+      newErrors.breakMinutes = 'Thời gian nghỉ không thể âm';
+      isValid = false;
     }
 
-    return true;
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSave = async () => {
     if (!validateForm()) return;
 
     try {
+      setStatusMessage({ type: '', message: '' }); // Clear previous status
+
       const shiftData: Shift = {
         id: isEditing ? shiftId! : `shift_${Date.now()}`,
         name: formData.name.trim(),
@@ -115,15 +156,21 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
       if (isEditing) {
         await actions.updateShift(shiftId!, shiftData);
-        Alert.alert('Thành công', 'Đã cập nhật ca làm việc.');
+        setStatusMessage({ type: 'success', message: '✅ Đã cập nhật ca làm việc thành công!' });
       } else {
         await actions.addShift(shiftData, formData.applyNow);
-        Alert.alert('Thành công', `Đã tạo ca làm việc${formData.applyNow ? ' và áp dụng ngay' : ''}.`);
+        setStatusMessage({
+          type: 'success',
+          message: `✅ Đã tạo ca làm việc${formData.applyNow ? ' và áp dụng ngay' : ''} thành công!`
+        });
       }
 
-      navigation.goBack();
+      // Auto navigate back after 2 seconds
+      setTimeout(() => {
+        navigation.goBack();
+      }, 2000);
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể lưu ca làm việc.');
+      setStatusMessage({ type: 'error', message: '❌ Không thể lưu ca làm việc. Vui lòng thử lại.' });
     }
   };
 
@@ -182,12 +229,16 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             </Text>
 
             <TextInput
-              label="Tên ca"
+              label="Tên ca *"
               value={formData.name}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
+              onChangeText={handleNameChange}
               style={styles.input}
               mode="outlined"
+              error={!!errors.name}
             />
+            <HelperText type="error" visible={!!errors.name}>
+              {errors.name}
+            </HelperText>
 
             <View style={styles.row}>
               <TextInput
@@ -229,11 +280,15 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             <TextInput
               label="Thời gian nghỉ (phút)"
               value={formData.breakMinutes.toString()}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, breakMinutes: parseInt(text) || 0 }))}
+              onChangeText={(text) => handleBreakMinutesChange(parseInt(text) || 0)}
               style={styles.input}
               mode="outlined"
               keyboardType="numeric"
+              error={!!errors.breakMinutes}
             />
+            <HelperText type="error" visible={!!errors.breakMinutes}>
+              {errors.breakMinutes}
+            </HelperText>
           </Card.Content>
         </Card>
 
@@ -241,7 +296,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Ngày làm việc
+              Ngày làm việc *
             </Text>
 
             <View style={styles.daysContainer}>
@@ -257,6 +312,10 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
                 </Chip>
               ))}
             </View>
+
+            <HelperText type="error" visible={!!errors.workDays}>
+              {errors.workDays}
+            </HelperText>
           </Card.Content>
         </Card>
 
@@ -300,6 +359,24 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             )}
           </Card.Content>
         </Card>
+
+        {/* Status Messages */}
+        {statusMessage.message && (
+          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+            <Card.Content>
+              <Text style={[
+                styles.statusMessage,
+                {
+                  color: statusMessage.type === 'success'
+                    ? theme.colors.primary
+                    : theme.colors.error
+                }
+              ]}>
+                {statusMessage.message}
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
 
         {/* Actions */}
         <View style={styles.actions}>
@@ -387,5 +464,11 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 0.48,
+  },
+  statusMessage: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: 8,
   },
 });

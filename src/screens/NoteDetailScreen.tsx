@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import {
   Text,
   TextInput,
@@ -8,9 +8,9 @@ import {
   Card,
   IconButton,
   useTheme,
-  Chip,
   Checkbox,
-  HelperText
+  HelperText,
+  RadioButton
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -231,7 +231,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
     setDeleteConfirm(false);
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (_: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       const newDateTime = new Date(formData.reminderDateTime);
@@ -242,7 +242,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
     }
   };
 
-  const onTimeChange = (event: any, selectedTime?: Date) => {
+  const onTimeChange = (_: any, selectedTime?: Date) => {
     setShowTimePicker(false);
     if (selectedTime) {
       const newDateTime = new Date(formData.reminderDateTime);
@@ -289,15 +289,18 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           {isEditing ? 'Chỉnh Sửa Ghi Chú' : 'Thêm Ghi Chú Mới'}
         </Text>
-        {isEditing && (
-          <IconButton
-            icon="delete"
-            size={24}
-            iconColor={theme.colors.error}
-            onPress={handleDelete}
-          />
-        )}
-        {!isEditing && <View style={{ width: 48 }} />}
+        <Button
+          mode="contained"
+          onPress={handleSave}
+          disabled={!isFormValid()}
+          compact
+          style={[
+            styles.headerSaveButton,
+            !isFormValid() && { backgroundColor: theme.colors.surfaceDisabled }
+          ]}
+        >
+          Lưu
+        </Button>
       </View>
 
       <ScrollView style={styles.scrollView}>
@@ -390,33 +393,27 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                   Chọn kiểu nhắc *
                 </Text>
 
-                <View style={styles.scheduleTypeContainer}>
+                <RadioButton.Group
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, reminderType: value as 'specific' | 'shift' }));
+                    setErrors(prev => ({ ...prev, reminderDateTime: '', reminderShifts: '' }));
+                  }}
+                  value={formData.reminderType}
+                >
                   <View style={styles.radioOption}>
-                    <Checkbox
-                      status={formData.reminderType === 'specific' ? 'checked' : 'unchecked'}
-                      onPress={() => {
-                        setFormData(prev => ({ ...prev, reminderType: 'specific' }));
-                        setErrors(prev => ({ ...prev, reminderDateTime: '', reminderShifts: '' }));
-                      }}
-                    />
+                    <RadioButton value="specific" />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
                       Đặt lịch cụ thể
                     </Text>
                   </View>
 
                   <View style={styles.radioOption}>
-                    <Checkbox
-                      status={formData.reminderType === 'shift' ? 'checked' : 'unchecked'}
-                      onPress={() => {
-                        setFormData(prev => ({ ...prev, reminderType: 'shift' }));
-                        setErrors(prev => ({ ...prev, reminderDateTime: '', reminderShifts: '' }));
-                      }}
-                    />
+                    <RadioButton value="shift" />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      Nhắc theo ca
+                      Nhắc theo ca làm việc
                     </Text>
                   </View>
-                </View>
+                </RadioButton.Group>
               </>
             )}
           </Card.Content>
@@ -468,15 +465,15 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                   {state.shifts.length > 0 ? (
                     <View style={styles.shiftsContainer}>
                       {state.shifts.map((shift) => (
-                        <Chip
-                          key={shift.id}
-                          mode={formData.associatedShiftIds.includes(shift.id) ? 'flat' : 'outlined'}
-                          selected={formData.associatedShiftIds.includes(shift.id)}
-                          onPress={() => handleShiftToggle(shift.id)}
-                          style={styles.shiftChip}
-                        >
-                          {shift.name}
-                        </Chip>
+                        <View key={shift.id} style={styles.shiftCheckboxRow}>
+                          <Checkbox
+                            status={formData.associatedShiftIds.includes(shift.id) ? 'checked' : 'unchecked'}
+                            onPress={() => handleShiftToggle(shift.id)}
+                          />
+                          <Text style={[styles.shiftLabel, { color: theme.colors.onSurface }]}>
+                            {shift.name}
+                          </Text>
+                        </View>
                       ))}
                     </View>
                   ) : (
@@ -545,22 +542,9 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
           </Card>
         )}
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <Button
-            mode="contained"
-            onPress={handleSave}
-            style={[
-              styles.saveButton,
-              !isFormValid() && { backgroundColor: theme.colors.surfaceDisabled }
-            ]}
-            disabled={!isFormValid()}
-            icon={isEditing ? 'content-save' : 'plus'}
-          >
-            {isEditing ? 'Lưu Thay Đổi' : 'Tạo Ghi Chú'}
-          </Button>
-
-          {isEditing && !deleteConfirm && (
+        {/* Delete Button - Only show when editing */}
+        {isEditing && !deleteConfirm && (
+          <View style={styles.deleteButtonContainer}>
             <Button
               mode="outlined"
               onPress={handleDelete}
@@ -568,10 +552,10 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
               icon="delete"
               textColor={theme.colors.error}
             >
-              Xóa Ghi Chú
+              XÓA GHI CHÚ
             </Button>
-          )}
-        </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Date/Time Pickers */}
@@ -608,10 +592,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 8,
     paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  headerSaveButton: {
+    minWidth: 60,
   },
   scrollView: {
     flex: 1,
@@ -630,6 +622,7 @@ const styles = StyleSheet.create({
   sectionDescription: {
     fontSize: 12,
     marginBottom: 12,
+    fontStyle: 'italic',
   },
   input: {
     marginBottom: 4,
@@ -672,9 +665,6 @@ const styles = StyleSheet.create({
   dateTimeButton: {
     flex: 0.48,
   },
-  scheduleTypeContainer: {
-    marginVertical: 8,
-  },
   radioOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -685,13 +675,18 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   shiftsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
     marginTop: 8,
   },
-  shiftChip: {
-    marginBottom: 8,
+  shiftCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+    paddingVertical: 4,
+  },
+  shiftLabel: {
+    fontSize: 16,
+    marginLeft: 8,
+    flex: 1,
   },
   noShiftsText: {
     fontSize: 14,
@@ -699,16 +694,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 16,
   },
-
-  actions: {
+  deleteButtonContainer: {
     marginTop: 24,
     marginBottom: 32,
-  },
-  saveButton: {
-    marginBottom: 12,
+    alignItems: 'center',
   },
   deleteButton: {
     borderColor: 'transparent',
+    backgroundColor: 'transparent',
   },
   statusMessage: {
     fontSize: 16,

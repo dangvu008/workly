@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, useTheme, Menu, Button } from 'react-native-paper';
-import { format, addDays, startOfWeek, isFuture, isToday } from 'date-fns';
+import { format, addDays, startOfWeek, isFuture, isToday, isPast } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
 import { DailyWorkStatus } from '../types';
 import { storageService } from '../services/storage';
+import { DayDetailModal } from './DayDetailModal';
 
 interface WeeklyStatusGridProps {
   onDayPress?: (date: string) => void;
@@ -16,6 +17,8 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
   const [menuVisible, setMenuVisible] = React.useState<string | null>(null);
+  const [modalVisible, setModalVisible] = React.useState(false);
+  const [selectedDate, setSelectedDate] = React.useState<string>('');
 
   // Get the current week (Monday to Sunday)
   const today = new Date();
@@ -32,7 +35,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const getStatusIcon = (date: Date): string => {
     const status = getStatusForDate(date);
-    
+
     if (!status) {
       if (isFuture(date) && !isToday(date)) {
         return WEEKLY_STATUS.pending.icon;
@@ -45,7 +48,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const getStatusColor = (date: Date): string => {
     const status = getStatusForDate(date);
-    
+
     if (!status) {
       if (isFuture(date) && !isToday(date)) {
         return WEEKLY_STATUS.pending.color;
@@ -58,25 +61,29 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleDayPress = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
+    setSelectedDate(dateString);
+    setModalVisible(true);
     onDayPress?.(dateString);
   };
 
   const handleDayLongPress = (date: Date) => {
-    if (isFuture(date) && !isToday(date)) {
+    // Allow manual status update for current day and past days, plus future days for planning
+    const canUpdate = isToday(date) || isPast(date) || isFuture(date);
+    if (canUpdate) {
       const dateString = format(date, 'yyyy-MM-dd');
       setMenuVisible(dateString);
     }
   };
 
-  const handleManualStatusUpdate = async (date: string, status: 'manual_present' | 'manual_absent' | 'manual_holiday') => {
+  const handleManualStatusUpdate = async (date: string, status: 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review') => {
     try {
       const manualStatus: DailyWorkStatus = {
         status,
-        standardHoursScheduled: status === 'manual_present' ? 8 : 0,
+        standardHoursScheduled: (status === 'manual_present' || status === 'manual_completed') ? 8 : 0,
         otHoursScheduled: 0,
         sundayHoursScheduled: 0,
         nightHoursScheduled: 0,
-        totalHoursScheduled: status === 'manual_present' ? 8 : 0,
+        totalHoursScheduled: (status === 'manual_present' || status === 'manual_completed') ? 8 : 0,
         lateMinutes: 0,
         earlyMinutes: 0,
         isHolidayWork: status === 'manual_holiday',
@@ -90,6 +97,8 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         manual_present: 'Có mặt',
         manual_absent: 'Nghỉ',
         manual_holiday: 'Nghỉ lễ',
+        manual_completed: 'Hoàn thành',
+        manual_review: 'Cần xem lại',
       }[status];
 
       Alert.alert('Thành công', `Đã đánh dấu ${format(new Date(date), 'dd/MM')} là "${statusText}"`);
@@ -105,7 +114,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
     const statusIcon = getStatusIcon(date);
     const statusColor = getStatusColor(date);
     const isCurrentDay = isToday(date);
-    const isFutureDay = isFuture(date) && !isToday(date);
+    const canUpdate = isToday(date) || isPast(date) || isFuture(date);
 
     return (
       <TouchableOpacity
@@ -113,7 +122,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         style={[
           styles.dayItem,
           { backgroundColor: theme.colors.surface },
-          isCurrentDay && { 
+          isCurrentDay && {
             backgroundColor: theme.colors.primaryContainer,
             borderColor: theme.colors.primary,
             borderWidth: 2,
@@ -130,7 +139,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         ]}>
           {dayName}
         </Text>
-        
+
         <Text style={[
           styles.dayNumber,
           { color: theme.colors.onSurface },
@@ -138,7 +147,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         ]}>
           {dayNumber}
         </Text>
-        
+
         <Text style={[
           styles.statusIcon,
           { color: statusColor }
@@ -146,7 +155,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
           {statusIcon}
         </Text>
 
-        {isFutureDay && (
+        {canUpdate && (
           <Menu
             visible={menuVisible === dateString}
             onDismiss={() => setMenuVisible(null)}
@@ -155,18 +164,28 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
           >
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_present')}
-              title="Đánh dấu Có mặt"
+              title="Đánh dấu Có mặt (P)"
               leadingIcon="check-circle"
             />
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_absent')}
-              title="Đánh dấu Nghỉ"
+              title="Đánh dấu Nghỉ (B)"
               leadingIcon="sleep"
             />
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_holiday')}
-              title="Đánh dấu Nghỉ lễ"
+              title="Đánh dấu Nghỉ lễ (H)"
               leadingIcon="flag"
+            />
+            <Menu.Item
+              onPress={() => handleManualStatusUpdate(dateString, 'manual_completed')}
+              title="Đánh dấu Hoàn thành (✅)"
+              leadingIcon="check-all"
+            />
+            <Menu.Item
+              onPress={() => handleManualStatusUpdate(dateString, 'manual_review')}
+              title="Đánh dấu Cần xem lại (RV)"
+              leadingIcon="eye-check"
             />
           </Menu>
         )}
@@ -175,49 +194,60 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   };
 
   return (
-    <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
-      <Card.Content>
-        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-          Trạng thái tuần này
-        </Text>
-        
-        <View style={styles.grid}>
-          {weekDays.map((date, index) => renderDayItem(date, index))}
-        </View>
-
-        <View style={styles.legend}>
-          <Text style={[styles.legendTitle, { color: theme.colors.onSurface }]}>
-            Chú thích:
+    <>
+      <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+        <Card.Content>
+          <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+            Trạng thái tuần này
           </Text>
-          <View style={styles.legendItems}>
-            <View style={styles.legendItem}>
-              <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.completed.color }]}>
-                {WEEKLY_STATUS.completed.icon}
-              </Text>
-              <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
-                Hoàn thành
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.late.color }]}>
-                {WEEKLY_STATUS.late.icon}
-              </Text>
-              <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
-                Đi muộn
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.absent.color }]}>
-                {WEEKLY_STATUS.absent.icon}
-              </Text>
-              <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
-                Vắng mặt
-              </Text>
+
+          <View style={styles.grid}>
+            {weekDays.map((date, index) => renderDayItem(date, index))}
+          </View>
+
+          <View style={styles.legend}>
+            <Text style={[styles.legendTitle, { color: theme.colors.onSurface }]}>
+              Chú thích:
+            </Text>
+            <View style={styles.legendItems}>
+              <View style={styles.legendItem}>
+                <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.completed.color }]}>
+                  {WEEKLY_STATUS.completed.icon}
+                </Text>
+                <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
+                  Hoàn thành
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.late.color }]}>
+                  {WEEKLY_STATUS.late.icon}
+                </Text>
+                <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
+                  Đi muộn
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.absent.color }]}>
+                  {WEEKLY_STATUS.absent.icon}
+                </Text>
+                <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
+                  Vắng mặt
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      </Card.Content>
-    </Card>
+        </Card.Content>
+      </Card>
+
+      {/* Day Detail Modal */}
+      <DayDetailModal
+        visible={modalVisible}
+        onDismiss={() => setModalVisible(false)}
+        date={selectedDate}
+        status={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
+        shift={state.activeShift}
+      />
+    </>
   );
 }
 

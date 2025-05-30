@@ -51,7 +51,7 @@ export interface AttendanceLog {
 }
 
 export interface DailyWorkStatus {
-  status: 'completed' | 'late' | 'early' | 'absent' | 'manual_present' | 'manual_absent' | 'manual_holiday' | 'pending';
+  status: 'completed' | 'late' | 'early' | 'absent' | 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review' | 'pending';
   vaoLogTime?: string; // ISO 8601 timestamp
   raLogTime?: string; // ISO 8601 timestamp
   standardHoursScheduled: number;

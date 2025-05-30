@@ -124,6 +124,16 @@ export const WEEKLY_STATUS = {
     color: '#E91E63',
     text: 'Nghỉ lễ (thủ công)',
   },
+  manual_completed: {
+    icon: '✅',
+    color: '#4CAF50',
+    text: 'Hoàn thành (thủ công)',
+  },
+  manual_review: {
+    icon: 'RV',
+    color: '#FF5722',
+    text: 'Cần xem lại (thủ công)',
+  },
   pending: {
     icon: '❓',
     color: '#9E9E9E',

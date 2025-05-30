@@ -374,12 +374,6 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               {format(currentTime, 'HH:mm')}
             </Text>
           </View>
-          <IconButton
-            icon="cog"
-            size={24}
-            iconColor={theme.colors.onBackground}
-            onPress={() => navigation.navigate('SettingsTab')}
-          />
         </View>
 
         {/* Weather Widget */}

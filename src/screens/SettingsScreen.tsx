@@ -246,23 +246,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           </Card.Content>
         </Card>
 
-        {/* Shift Management */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
-          <Card.Content>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Quản lý ca làm việc
-            </Text>
-
-            <List.Item
-              title="Quản lý ca"
-              description={`Ca hiện tại: ${state.activeShift?.name || 'Chưa chọn'}`}
-              left={(props) => <List.Icon {...props} icon="clock-outline" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => navigation.navigate('ShiftsTab')}
-            />
-          </Card.Content>
-        </Card>
-
         {/* Notifications */}
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
@@ -384,13 +367,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               Khác
             </Text>
-
-            <List.Item
-              title="Thống kê"
-              left={(props) => <List.Icon {...props} icon="chart-line" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => navigation.navigate('StatisticsTab')}
-            />
 
             <List.Item
               title="Thông tin ứng dụng"

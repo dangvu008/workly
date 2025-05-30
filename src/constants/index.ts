@@ -31,6 +31,8 @@ export const DEFAULT_SETTINGS = {
     holiday: 300,
   },
   notesDisplayCount: 3 as const,
+  notesTimeWindow: 'always' as const,
+  notesShowConflictWarning: true,
 };
 
 // Time constants

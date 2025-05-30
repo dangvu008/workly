@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, FlatList } from 'react-native';
 import {
   Text,
   Card,
@@ -8,7 +8,8 @@ import {
   FAB,
   Menu,
   Button,
-  Divider
+  Divider,
+  Searchbar
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
@@ -35,6 +36,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [displayCountMenuVisible, setDisplayCountMenuVisible] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'title'>('date');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleDeleteNote = (note: Note) => {
     Alert.alert(
@@ -58,9 +60,19 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
     );
   };
 
-  const getSortedNotes = (): Note[] => {
-    const notes = [...state.notes];
+  const getSortedAndFilteredNotes = (): Note[] => {
+    let notes = [...state.notes];
 
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      notes = notes.filter(note =>
+        note.title.toLowerCase().includes(query) ||
+        note.content.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply sorting
     switch (sortBy) {
       case 'priority':
         return notes.sort((a, b) => {
@@ -181,12 +193,12 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
             </View>
           </Card.Content>
         </Card>
-        {index < getSortedNotes().length - 1 && <Divider style={styles.divider} />}
+        {index < getSortedAndFilteredNotes().length - 1 && <Divider style={styles.divider} />}
       </View>
     );
   };
 
-  const sortedNotes = getSortedNotes();
+  const sortedNotes = getSortedAndFilteredNotes();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -231,6 +243,13 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 setDisplayCountMenuVisible(false);
               }}
               title="3 ghi chú"
+            />
+            <Menu.Item
+              onPress={() => {
+                actions.updateSettings({ notesDisplayCount: 4 });
+                setDisplayCountMenuVisible(false);
+              }}
+              title="4 ghi chú"
             />
             <Menu.Item
               onPress={() => {
@@ -285,22 +304,51 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
         </View>
       </View>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Tìm kiếm ghi chú..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}
+          inputStyle={{ color: theme.colors.onSurface }}
+          iconColor={theme.colors.onSurfaceVariant}
+        />
+      </View>
+
       <ScrollView style={styles.scrollView}>
         {sortedNotes.length > 0 ? (
           sortedNotes.map((note, index) => renderNoteItem(note, index))
         ) : (
           <Card style={[styles.emptyCard, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
-              <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên!
-              </Text>
-              <Button
-                mode="contained"
-                onPress={() => navigation.navigate('NoteDetail')}
-                style={styles.createFirstButton}
-              >
-                Tạo ghi chú đầu tiên
-              </Button>
+              {searchQuery.trim() ? (
+                <>
+                  <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                    Không tìm thấy ghi chú nào với từ khóa "{searchQuery}"
+                  </Text>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setSearchQuery('')}
+                    style={styles.createFirstButton}
+                  >
+                    Xóa tìm kiếm
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                    Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên!
+                  </Text>
+                  <Button
+                    mode="contained"
+                    onPress={() => navigation.navigate('NoteDetail', {})}
+                    style={styles.createFirstButton}
+                  >
+                    Tạo ghi chú đầu tiên
+                  </Button>
+                </>
+              )}
             </Card.Content>
           </Card>
         )}
@@ -309,7 +357,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       <FAB
         icon="plus"
         style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => navigation.navigate('NoteDetail')}
+        onPress={() => navigation.navigate('NoteDetail', {})}
       />
     </SafeAreaView>
   );
@@ -356,6 +404,14 @@ const styles = StyleSheet.create({
   controlButton: {
     minWidth: 80,
     height: 32,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  searchBar: {
+    elevation: 0,
+    borderRadius: 8,
   },
   scrollView: {
     flex: 1,

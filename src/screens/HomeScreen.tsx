@@ -15,6 +15,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { workManager } from '../services/workManager';
+import { notificationService } from '../services/notifications';
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'HomeTab'>,
@@ -91,14 +92,34 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const [topNotes, setTopNotes] = React.useState<any[]>([]);
   const [expandedNotes, setExpandedNotes] = React.useState<Set<string>>(new Set());
 
-  // Get upcoming notes with reminder info
+  // Get upcoming notes with advanced filtering
   const getUpcomingNotes = () => {
     const now = new Date();
-    const notesWithReminders = state.notes.filter(note => {
+    const settings = state.settings;
+    const maxCount = settings?.notesDisplayCount || 3;
+    const timeWindow = settings?.notesTimeWindow || 'always';
+
+    // Filter notes based on reminder status and visibility
+    let notesWithReminders = state.notes.filter(note => {
+      // Skip hidden notes
+      if (note.isHiddenFromHome) return false;
+
+      // Skip snoozed notes
+      if (note.snoozeUntil && new Date(note.snoozeUntil) > now) return false;
+
       // Has specific reminder time
       if (note.reminderDateTime) {
         const reminderTime = new Date(note.reminderDateTime);
-        return reminderTime > now;
+        if (reminderTime <= now) return false; // Past reminders
+
+        // Apply time window filter
+        if (timeWindow !== 'always') {
+          const timeWindowMs = timeWindow * 60 * 1000; // Convert minutes to milliseconds
+          const timeDiff = reminderTime.getTime() - now.getTime();
+          if (timeDiff > timeWindowMs) return false;
+        }
+
+        return true;
       }
 
       // Has shift-based reminders
@@ -109,22 +130,57 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       return false;
     });
 
-    // Sort by reminder priority: specific times first (by time), then shift-based
+    // Sort by priority and reminder time
     const sortedNotes = notesWithReminders.sort((a, b) => {
+      // Priority notes first
+      if (a.isPriority && !b.isPriority) return -1;
+      if (!a.isPriority && b.isPriority) return 1;
+
+      // Then by reminder type and time
       if (a.reminderDateTime && b.reminderDateTime) {
         return new Date(a.reminderDateTime).getTime() - new Date(b.reminderDateTime).getTime();
       }
       if (a.reminderDateTime && !b.reminderDateTime) return -1;
       if (!a.reminderDateTime && b.reminderDateTime) return 1;
 
-      // Both are shift-based, sort by priority then by updated time
-      if (a.isPriority && !b.isPriority) return -1;
-      if (!a.isPriority && b.isPriority) return 1;
-
+      // Both are shift-based, sort by updated time
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-    return sortedNotes.slice(0, 3); // Show max 3 notes
+    return sortedNotes.slice(0, maxCount);
+  };
+
+  // Check for conflicting reminders
+  const getConflictWarning = () => {
+    if (!state.settings?.notesShowConflictWarning) return null;
+
+    const now = new Date();
+    const upcomingNotes = topNotes.filter(note => note.reminderDateTime);
+
+    // Group notes by time windows (5-minute intervals)
+    const timeGroups: { [key: string]: any[] } = {};
+
+    upcomingNotes.forEach(note => {
+      if (note.reminderDateTime) {
+        const reminderTime = new Date(note.reminderDateTime);
+        const timeKey = Math.floor(reminderTime.getTime() / (5 * 60 * 1000)); // 5-minute groups
+
+        if (!timeGroups[timeKey]) {
+          timeGroups[timeKey] = [];
+        }
+        timeGroups[timeKey].push(note);
+      }
+    });
+
+    // Find groups with multiple notes
+    const conflictGroups = Object.values(timeGroups).filter(group => group.length > 1);
+
+    if (conflictGroups.length > 0) {
+      const totalConflicts = conflictGroups.reduce((sum, group) => sum + group.length, 0);
+      return `Có ${totalConflicts} ghi chú nhắc nhở cùng lúc`;
+    }
+
+    return null;
   };
 
   // Load upcoming notes
@@ -216,6 +272,76 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         }
       ]
     );
+  };
+
+  // Handle hide note from home screen
+  const handleHideNote = (note: any) => {
+    Alert.alert(
+      'Ẩn ghi chú',
+      `Bạn có muốn ẩn ghi chú "${note.title}" khỏi trang chủ và tắt nhắc nhở tiếp theo không?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Ẩn',
+          onPress: async () => {
+            try {
+              await actions.updateNote(note.id, { isHiddenFromHome: true });
+              // Cancel any scheduled reminders for this note
+              await notificationService.cancelNoteReminder(note.id);
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể ẩn ghi chú.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle snooze note
+  const handleSnoozeNote = (note: any) => {
+    Alert.alert(
+      'Báo lại',
+      'Chọn thời gian báo lại:',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: '5 phút',
+          onPress: () => snoozeNote(note, 5)
+        },
+        {
+          text: '15 phút',
+          onPress: () => snoozeNote(note, 15)
+        },
+        {
+          text: '30 phút',
+          onPress: () => snoozeNote(note, 30)
+        },
+        {
+          text: '1 giờ',
+          onPress: () => snoozeNote(note, 60)
+        }
+      ]
+    );
+  };
+
+  const snoozeNote = async (note: any, minutes: number) => {
+    try {
+      const snoozeUntil = new Date();
+      snoozeUntil.setMinutes(snoozeUntil.getMinutes() + minutes);
+
+      await actions.updateNote(note.id, {
+        snoozeUntil: snoozeUntil.toISOString()
+      });
+
+      // Reschedule reminder for snooze time
+      await notificationService.cancelNoteReminder(note.id);
+      await notificationService.scheduleNoteReminder({
+        ...note,
+        reminderDateTime: snoozeUntil.toISOString()
+      });
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể báo lại ghi chú.');
+    }
   };
 
   const attendanceHistory = getAttendanceHistory();
@@ -357,6 +483,18 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               />
             </View>
 
+            {/* Conflict Warning */}
+            {(() => {
+              const conflictWarning = getConflictWarning();
+              return conflictWarning ? (
+                <View style={[styles.conflictWarning, { backgroundColor: theme.colors.errorContainer }]}>
+                  <Text style={[styles.conflictWarningText, { color: theme.colors.onErrorContainer }]}>
+                    ⚠️ {conflictWarning}
+                  </Text>
+                </View>
+              ) : null;
+            })()}
+
             {topNotes.length > 0 ? (
               <>
                 {topNotes.map((note, index) => {
@@ -397,7 +535,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                         <View style={styles.noteActions}>
                           <IconButton
                             icon="pencil"
-                            size={16}
+                            size={14}
                             iconColor={theme.colors.primary}
                             onPress={(e) => {
                               e.stopPropagation();
@@ -405,8 +543,26 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                             }}
                           />
                           <IconButton
+                            icon="bell-sleep"
+                            size={14}
+                            iconColor={theme.colors.secondary}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleSnoozeNote(note);
+                            }}
+                          />
+                          <IconButton
+                            icon="eye-off"
+                            size={14}
+                            iconColor={theme.colors.outline}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleHideNote(note);
+                            }}
+                          />
+                          <IconButton
                             icon="delete"
-                            size={16}
+                            size={14}
                             iconColor={theme.colors.error}
                             onPress={(e) => {
                               e.stopPropagation();
@@ -545,6 +701,16 @@ const styles = StyleSheet.create({
   },
   addNoteButton: {
     marginTop: 12,
+  },
+  conflictWarning: {
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  conflictWarningText: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   infoText: {
     fontSize: 14,

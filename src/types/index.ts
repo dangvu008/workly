@@ -17,7 +17,9 @@ export interface UserSettings {
     sunday: number;
     holiday: number;
   };
-  notesDisplayCount: 2 | 3 | 5;
+  notesDisplayCount: 2 | 3 | 4 | 5;
+  notesTimeWindow: 5 | 15 | 30 | 60 | 'always'; // minutes or 'always'
+  notesShowConflictWarning: boolean;
   rotationConfig?: {
     rotationShifts: string[];
     rotationFrequency: 'weekly' | 'biweekly' | 'triweekly' | 'monthly';
@@ -88,6 +90,8 @@ export interface Note {
   associatedShiftIds?: string[];
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
+  isHiddenFromHome?: boolean; // Temporarily hidden from home screen
+  snoozeUntil?: string; // ISO 8601 timestamp - snoozed until this time
 }
 
 export interface WeatherData {

@@ -8,6 +8,7 @@ import { useApp } from '../contexts/AppContext';
 import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/MultiFunctionButton';
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
+import { AttendanceHistory } from '../components/AttendanceHistory';
 import { commonStyles } from '../constants/themes';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -179,6 +180,11 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           ) : (
             <MultiFunctionButton />
           )
+        )}
+
+        {/* Attendance History - Show below Multi-Function Button */}
+        {state.timeDisplayInfo?.shouldShowButton && (
+          <AttendanceHistory />
         )}
 
         {/* Time Display Info for debugging */}

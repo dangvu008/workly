@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Vibration } from 'react-native';
 import { Button, Text, IconButton, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
+import { format } from 'date-fns';
 import { useApp } from '../contexts/AppContext';
 import { BUTTON_STATES } from '../constants';
 import { ButtonState } from '../types';
@@ -15,12 +16,29 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
   const [isPressed, setIsPressed] = useState(false);
+  const [hasTodayLogs, setHasTodayLogs] = useState(false);
 
   const buttonConfig = BUTTON_STATES[state.currentButtonState];
   const isDisabled = state.currentButtonState === 'completed' ||
                     state.currentButtonState === 'waiting_checkin' ||
                     state.currentButtonState === 'working' ||
                     state.currentButtonState === 'ready_complete';
+
+  // Check if there are attendance logs for today
+  useEffect(() => {
+    checkTodayLogs();
+  }, [state.currentButtonState]);
+
+  const checkTodayLogs = async () => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const logs = await storageService.getAttendanceLogsForDate(today);
+      setHasTodayLogs(logs.length > 0);
+    } catch (error) {
+      console.error('Error checking today logs:', error);
+      setHasTodayLogs(false);
+    }
+  };
 
   const handlePress = async () => {
     if (isDisabled) return;
@@ -34,6 +52,10 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       }
 
       await actions.handleButtonPress();
+
+      // Refresh logs status after successful button press
+      await checkTodayLogs();
+
       onPress?.();
     } catch (error) {
       console.error('Error in button press:', error);
@@ -59,6 +81,10 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           onPress: async () => {
             try {
               await actions.resetDailyStatus();
+
+              // Refresh logs status after reset
+              await checkTodayLogs();
+
               Alert.alert('Thành công', 'Đã reset trạng thái chấm công hôm nay.');
             } catch (error) {
               Alert.alert('Lỗi', 'Không thể reset trạng thái. Vui lòng thử lại.');
@@ -80,7 +106,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
     return [baseColor, baseColor + '80'];
   };
 
-  const showResetButton = state.currentButtonState !== 'go_work';
+  // Show reset button only if there are attendance logs for today
+  const showResetButton = hasTodayLogs;
 
   return (
     <View style={styles.container}>

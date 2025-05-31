@@ -146,17 +146,12 @@ class TimeSyncService {
     return isAfter(now, resetTime) && isBefore(now, scheduledStartTimeFull);
   }
 
-  // Get current button state based on time and logs
+  // Get current button state based on time and logs - Nút luôn hiển thị
   async getCurrentButtonState(shift: Shift, logs: AttendanceLog[], mode?: 'simple' | 'full'): Promise<ButtonState> {
     const now = new Date();
     const today = startOfDay(now);
 
-    // Check if within active window
-    if (!this.isWithinActiveWindow(shift)) {
-      return 'go_work'; // Hidden/disabled state, but return go_work as default
-    }
-
-    // Check if should reset
+    // Check if should reset (vẫn giữ logic reset)
     if (this.shouldResetButton(shift)) {
       return 'go_work';
     }
@@ -194,27 +189,19 @@ class TimeSyncService {
 
     // 2. Đã có go_work, chưa có check_in
     if (!checkInLog) {
-      // Kiểm tra xem đã đến thời điểm cho phép check-in chưa (trong khoảng 30 phút quanh scheduledStartTime)
-      const timeDiff = Math.abs(now.getTime() - scheduledStartTimeFull.getTime()) / (1000 * 60);
-      if (timeDiff <= 30) {
-        return 'check_in'; // "CHẤM CÔNG VÀO"
-      }
-      return 'awaiting_check_in'; // "CHỜ CHECK-IN"
+      // Luôn cho phép check-in (không cần đợi thời gian)
+      return 'check_in'; // "CHẤM CÔNG VÀO"
     }
 
     // 3. Đã có check_in, chưa có check_out
     if (!checkOutLog) {
-      // Kiểm tra xem đã đến thời điểm cho phép check-out chưa (sau thời gian làm việc tối thiểu hoặc gần scheduledOfficeEndTime)
-      const timeDiff = (now.getTime() - scheduledOfficeEndTimeFull.getTime()) / (1000 * 60);
-      if (timeDiff >= -30) {
-        return 'check_out'; // "CHẤM CÔNG RA"
-      }
-      return 'working'; // "ĐANG LÀM VIỆC" (có thể tạm thời disabled)
+      // Luôn cho phép check-out (không cần đợi thời gian)
+      return 'check_out'; // "CHẤM CÔNG RA"
     }
 
     // 4. Đã có check_out, chưa có complete
     if (!completeLog) {
-      return 'awaiting_complete'; // "CHỜ HOÀN TẤT" hoặc có thể cho phép "HOÀN TẤT" ngay
+      return 'complete'; // "HOÀN TẤT" (luôn cho phép)
     }
 
     // 5. Đã hoàn tất tất cả
@@ -320,7 +307,7 @@ class TimeSyncService {
     }
   }
 
-  // Get display info for current time and shift
+  // Get display info for current time and shift - Nút luôn hiển thị
   getTimeDisplayInfo(shift: Shift): {
     isActiveWindow: boolean;
     shouldShowButton: boolean;
@@ -334,17 +321,16 @@ class TimeSyncService {
 
     let currentPhase: 'before_work' | 'work_time' | 'after_work' | 'inactive' = 'inactive';
 
-    if (isActiveWindow) {
-      const startTime = this.parseTimeToday(shift.startTime, shift.isNightShift);
-      const endTime = this.parseTimeToday(shift.endTime, shift.isNightShift);
+    // Xác định phase dựa trên thời gian thực tế
+    const startTime = this.parseTimeToday(shift.startTime, shift.isNightShift);
+    const endTime = this.parseTimeToday(shift.endTime, shift.isNightShift);
 
-      if (isBefore(now, startTime)) {
-        currentPhase = 'before_work';
-      } else if (isWithinInterval(now, { start: startTime, end: endTime })) {
-        currentPhase = 'work_time';
-      } else {
-        currentPhase = 'after_work';
-      }
+    if (isBefore(now, startTime)) {
+      currentPhase = 'before_work';
+    } else if (isWithinInterval(now, { start: startTime, end: endTime })) {
+      currentPhase = 'work_time';
+    } else {
+      currentPhase = 'after_work';
     }
 
     const nextResetTime = this.getNextResetTime(shift);
@@ -352,8 +338,8 @@ class TimeSyncService {
 
     return {
       isActiveWindow,
-      shouldShowButton: isActiveWindow,
-      shouldShowHistory: isActiveWindow,
+      shouldShowButton: true, // Luôn hiển thị nút
+      shouldShowHistory: true, // Luôn hiển thị lịch sử
       timeUntilNextReset,
       currentPhase,
     };

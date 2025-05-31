@@ -22,13 +22,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
   const buttonConfig = BUTTON_STATES[state.currentButtonState];
 
-  // Logic disabled theo thiết kế mới - Improved with processing state
-  const isDisabled = isProcessing ||
-                    state.currentButtonState === 'completed_day' ||
-                    state.currentButtonState === 'awaiting_check_in' ||
-                    state.currentButtonState === 'working' ||
-                    state.currentButtonState === 'awaiting_check_out' ||
-                    state.currentButtonState === 'awaiting_complete';
+  // Logic disabled theo thiết kế mới - Chỉ disabled khi processing hoặc đã hoàn tất
+  const isDisabled = isProcessing || state.currentButtonState === 'completed_day';
 
   // Check if there are attendance logs for today
   useEffect(() => {
@@ -46,6 +41,92 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
     }
   };
 
+  // Kiểm tra xem có cần xác nhận không (bấm không đúng thời gian)
+  const checkIfNeedsConfirmation = async (): Promise<boolean> => {
+    if (!state.activeShift) return false;
+
+    const now = new Date();
+    const currentState = state.currentButtonState;
+
+    // Chỉ cần xác nhận cho một số trạng thái nhất định
+    if (currentState === 'go_work' || currentState === 'check_in' || currentState === 'check_out') {
+      // Logic kiểm tra thời gian phù hợp
+      const shift = state.activeShift;
+      const startTime = new Date();
+      const [startHour, startMinute] = shift.startTime.split(':').map(Number);
+      startTime.setHours(startHour, startMinute, 0, 0);
+
+      const endTime = new Date();
+      const [endHour, endMinute] = shift.endTime.split(':').map(Number);
+      endTime.setHours(endHour, endMinute, 0, 0);
+
+      // Xử lý ca đêm
+      if (shift.isNightShift && endTime <= startTime) {
+        endTime.setDate(endTime.getDate() + 1);
+      }
+
+      const timeDiffFromStart = Math.abs(now.getTime() - startTime.getTime()) / (1000 * 60); // phút
+      const timeDiffFromEnd = Math.abs(now.getTime() - endTime.getTime()) / (1000 * 60); // phút
+
+      // Cần xác nhận nếu:
+      // - Bấm "Đi làm" hoặc "Check-in" quá sớm (>2 giờ trước ca)
+      // - Bấm "Check-out" quá sớm (>2 giờ trước kết thúc ca)
+      if (currentState === 'go_work' || currentState === 'check_in') {
+        return timeDiffFromStart > 120; // 2 giờ
+      }
+
+      if (currentState === 'check_out') {
+        return timeDiffFromEnd > 120; // 2 giờ
+      }
+    }
+
+    return false;
+  };
+
+  // Hiển thị dialog xác nhận
+  const showConfirmationDialog = () => {
+    const actionText: Record<string, string> = {
+      'go_work': 'đi làm',
+      'check_in': 'chấm công vào',
+      'check_out': 'chấm công ra',
+      'complete': 'hoàn tất',
+    };
+
+    const text = actionText[state.currentButtonState] || 'thực hiện hành động';
+
+    Alert.alert(
+      '⚠️ Xác nhận hành động',
+      `Bạn đang ${text} không đúng thời gian dự kiến. Bạn có chắc chắn muốn tiếp tục không?`,
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+          onPress: () => {
+            setIsPressed(false);
+            setIsProcessing(false);
+          }
+        },
+        {
+          text: 'Tiếp tục',
+          style: 'default',
+          onPress: async () => {
+            try {
+              await actions.handleButtonPress();
+              await checkTodayLogs();
+              onPress?.();
+            } catch (error) {
+              console.error('Error in confirmed button press:', error);
+              Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+            } finally {
+              setIsPressed(false);
+              setIsProcessing(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handlePress = async () => {
     if (isDisabled) return;
 
@@ -56,6 +137,15 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       // Vibrate if enabled
       if (state.settings?.alarmVibrationEnabled) {
         Vibration.vibrate(100);
+      }
+
+      // Kiểm tra xem có phải bấm không đúng thời gian không
+      const shouldConfirm = await checkIfNeedsConfirmation();
+
+      if (shouldConfirm) {
+        // Hiển thị dialog xác nhận
+        showConfirmationDialog();
+        return;
       }
 
       await actions.handleButtonPress();
@@ -215,7 +305,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
         {showResetButton && (
           <IconButton
-            icon="refresh"
+            icon="restart"
             size={20}
             iconColor={theme.colors.primary}
             style={styles.resetButton}
@@ -246,7 +336,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           style={styles.punchButton}
           contentStyle={styles.punchButtonContent}
         >
-          ✍️ Ký Công
+          📝 Ký Công
         </Button>
       )}
 

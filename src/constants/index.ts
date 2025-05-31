@@ -46,21 +46,21 @@ export const TIME_CONSTANTS = {
   MILLISECONDS_PER_DAY: 24 * 60 * 60 * 1000,
 } as const;
 
-// Button states and their display info
+// Button states and their display info - Icons đồng bộ với ứng dụng
 export const BUTTON_STATES = {
   go_work: {
     text: 'ĐI LÀM',
-    icon: '🚶‍♂️',
+    icon: '🏃‍♂️',
     color: '#4CAF50',
   },
   awaiting_check_in: {
     text: 'CHỜ CHECK-IN',
-    icon: '⏳',
+    icon: '⏰',
     color: '#FF9800',
   },
   check_in: {
     text: 'CHẤM CÔNG VÀO',
-    icon: '➡️',
+    icon: '📥',
     color: '#2196F3',
   },
   working: {
@@ -70,17 +70,17 @@ export const BUTTON_STATES = {
   },
   awaiting_check_out: {
     text: 'CHỜ CHECK-OUT',
-    icon: '⏳',
+    icon: '⏰',
     color: '#FF9800',
   },
   check_out: {
     text: 'CHẤM CÔNG RA',
-    icon: '⬅️',
+    icon: '📤',
     color: '#FF5722',
   },
   awaiting_complete: {
     text: 'CHỜ HOÀN TẤT',
-    icon: '🏁',
+    icon: '⏳',
     color: '#795548',
   },
   complete: {
@@ -90,7 +90,7 @@ export const BUTTON_STATES = {
   },
   completed_day: {
     text: 'ĐÃ HOÀN TẤT',
-    icon: '✅',
+    icon: '🎯',
     color: '#9E9E9E',
   },
 } as const;

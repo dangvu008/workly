@@ -79,8 +79,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }, [refreshing, isRefreshingData, actions]);
 
   const getAttendanceHistory = () => {
-    // Only show history if within active window
-    if (!state.timeDisplayInfo?.shouldShowHistory) {
+    // Luôn hiển thị history khi có active shift
+    if (!state.activeShift) {
       return [];
     }
 
@@ -436,8 +436,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </AnimatedCard>
 
-        {/* Multi-Function Button - Only show if within active window */}
-        {state.timeDisplayInfo?.shouldShowButton && (
+        {/* Multi-Function Button - Luôn hiển thị khi có active shift */}
+        {state.activeShift && (
           state.settings?.multiButtonMode === 'simple' ? (
             <SimpleMultiFunctionButton />
           ) : (
@@ -446,7 +446,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         )}
 
         {/* Attendance History - Show below Multi-Function Button */}
-        {state.timeDisplayInfo?.shouldShowButton && (
+        {state.activeShift && (
           <AnimatedCard animationType="slideUp" delay={400}>
             <MemoizedAttendanceHistory />
           </AnimatedCard>

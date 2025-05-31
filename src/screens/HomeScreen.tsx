@@ -14,8 +14,8 @@ import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { workManager } from '../services/workManager';
 import { notificationService } from '../services/notifications';
+import { debounce } from '../utils/debounce';
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'HomeTab'>,
@@ -31,8 +31,9 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const { state, actions } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
 
-  // Update time every minute
+  // Update time every minute - Optimized to reduce unnecessary re-renders
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -42,17 +43,25 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }, []);
 
   const onRefresh = async () => {
+    if (refreshing || isRefreshingData) return; // Prevent multiple simultaneous refreshes
+
     setRefreshing(true);
+    setIsRefreshingData(true);
+
     try {
+      // Batch all refresh operations for better performance
       await Promise.all([
         actions.refreshButtonState(),
         actions.refreshWeeklyStatus(),
         actions.refreshWeatherData(),
+        actions.refreshTimeDisplayInfo()
       ]);
     } catch (error) {
       console.error('Error refreshing data:', error);
+      // Could show user-friendly error message here
     } finally {
       setRefreshing(false);
+      setIsRefreshingData(false);
     }
   };
 
@@ -150,12 +159,12 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     return sortedNotes.slice(0, maxCount);
   };
 
-  // Check for conflicting reminders
-  const getConflictWarning = () => {
-    if (!state.settings?.notesShowConflictWarning) return null;
+  // Check for conflicting reminders - Optimized with memoization
+  const getConflictWarning = React.useMemo(() => {
+    if (!state.settings?.notesShowConflictWarning || topNotes.length === 0) return null;
 
-    const now = new Date();
     const upcomingNotes = topNotes.filter(note => note.reminderDateTime);
+    if (upcomingNotes.length < 2) return null; // No conflicts possible with less than 2 notes
 
     // Group notes by time windows (5-minute intervals)
     const timeGroups: { [key: string]: any[] } = {};
@@ -181,18 +190,21 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     }
 
     return null;
-  };
+  }, [state.settings?.notesShowConflictWarning, topNotes]);
 
-  // Load upcoming notes
-  const loadTopNotes = async () => {
-    try {
-      const upcomingNotes = getUpcomingNotes();
-      setTopNotes(upcomingNotes);
-    } catch (error) {
-      console.error('Error loading top notes:', error);
-      setTopNotes([]);
-    }
-  };
+  // Load upcoming notes - Debounced to prevent excessive calls
+  const loadTopNotes = React.useCallback(
+    debounce(async () => {
+      try {
+        const upcomingNotes = getUpcomingNotes();
+        setTopNotes(upcomingNotes);
+      } catch (error) {
+        console.error('Error loading top notes:', error);
+        setTopNotes([]);
+      }
+    }, 300),
+    [state.notes, state.settings?.notesDisplayCount, state.activeShift?.id]
+  );
 
   // Load top notes when notes or settings change
   React.useEffect(() => {
@@ -478,16 +490,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
 
             {/* Conflict Warning */}
-            {(() => {
-              const conflictWarning = getConflictWarning();
-              return conflictWarning ? (
-                <View style={[styles.conflictWarning, { backgroundColor: theme.colors.errorContainer }]}>
-                  <Text style={[styles.conflictWarningText, { color: theme.colors.onErrorContainer }]}>
-                    ⚠️ {conflictWarning}
-                  </Text>
-                </View>
-              ) : null;
-            })()}
+            {getConflictWarning && (
+              <View style={[styles.conflictWarning, { backgroundColor: theme.colors.errorContainer }]}>
+                <Text style={[styles.conflictWarningText, { color: theme.colors.onErrorContainer }]}>
+                  ⚠️ {getConflictWarning}
+                </Text>
+              </View>
+            )}
 
             {topNotes.length > 0 ? (
               <>

@@ -5,8 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { useApp } from '../contexts/AppContext';
 import { BUTTON_STATES } from '../constants';
-import { ButtonState } from '../types';
 import { storageService } from '../services/storage';
+import { LoadingOverlay } from './LoadingOverlay';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -17,11 +17,13 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const { state, actions } = useApp();
   const [isPressed, setIsPressed] = useState(false);
   const [hasTodayLogs, setHasTodayLogs] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const buttonConfig = BUTTON_STATES[state.currentButtonState];
 
-  // Logic disabled theo thiết kế mới
-  const isDisabled = state.currentButtonState === 'completed_day' ||
+  // Logic disabled theo thiết kế mới - Improved with processing state
+  const isDisabled = isProcessing ||
+                    state.currentButtonState === 'completed_day' ||
                     state.currentButtonState === 'awaiting_check_in' ||
                     state.currentButtonState === 'working' ||
                     state.currentButtonState === 'awaiting_check_out' ||
@@ -48,6 +50,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
     try {
       setIsPressed(true);
+      setIsProcessing(true);
 
       // Vibrate if enabled
       if (state.settings?.alarmVibrationEnabled) {
@@ -124,6 +127,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       }
     } finally {
       setIsPressed(false);
+      setIsProcessing(false);
     }
   };
 
@@ -244,6 +248,12 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           ✍️ Ký Công
         </Button>
       )}
+
+      {/* Loading overlay for processing state */}
+      <LoadingOverlay
+        visible={isProcessing}
+        message="Đang xử lý chấm công..."
+      />
     </View>
   );
 }

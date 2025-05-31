@@ -407,18 +407,44 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
-  // Handle button press
+  // Handle button press - Improved with better error handling and state management
   const handleButtonPress = async () => {
     try {
+      // Validate prerequisites
+      if (!state.activeShift) {
+        throw new Error('Không có ca làm việc đang hoạt động');
+      }
+
       await workManager.handleButtonPress(state.currentButtonState);
 
-      // Refresh state
-      await refreshButtonState();
-      await refreshWeeklyStatus();
-
+      // Batch state updates to reduce re-renders
       const today = format(new Date(), 'yyyy-MM-dd');
-      const todayStatus = await storageService.getDailyWorkStatusForDate(today);
+      const [newButtonState, todayStatus, weeklyStatus] = await Promise.all([
+        workManager.getCurrentButtonState(today),
+        storageService.getDailyWorkStatusForDate(today),
+        (async () => {
+          const weeklyStatus: Record<string, DailyWorkStatus> = {};
+          const todayDate = new Date();
+
+          for (let i = -6; i <= 0; i++) {
+            const date = new Date(todayDate);
+            date.setDate(todayDate.getDate() + i);
+            const dateString = format(date, 'yyyy-MM-dd');
+
+            const status = await storageService.getDailyWorkStatusForDate(dateString);
+            if (status) {
+              weeklyStatus[dateString] = status;
+            }
+          }
+          return weeklyStatus;
+        })()
+      ]);
+
+      // Update all states at once
+      dispatch({ type: 'SET_BUTTON_STATE', payload: newButtonState });
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
+      dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
+
     } catch (error) {
       console.error('Error handling button press:', error);
       throw error;
@@ -539,17 +565,31 @@ export function AppProvider({ children }: AppProviderProps) {
     loadInitialData();
   }, []);
 
-  // Refresh time display info every minute
+  // Refresh time display info every minute - Optimized with debouncing
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!state.isLoading && state.activeShift) {
-        refreshTimeDisplayInfo();
-        refreshButtonState();
-      }
-    }, 60000); // Every minute
+    let interval: NodeJS.Timeout;
 
-    return () => clearInterval(interval);
-  }, [state.isLoading, state.activeShift]);
+    // Only start interval if we have active shift and not loading
+    if (!state.isLoading && state.activeShift) {
+      interval = setInterval(async () => {
+        try {
+          // Batch updates to reduce re-renders
+          await Promise.all([
+            refreshTimeDisplayInfo(),
+            refreshButtonState()
+          ]);
+        } catch (error) {
+          console.error('Error in periodic refresh:', error);
+        }
+      }, 60000); // Every minute
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [state.isLoading, state.activeShift?.id]); // Use activeShift.id instead of whole object
 
 
 

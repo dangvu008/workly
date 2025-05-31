@@ -9,6 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppProvider, useApp } from './src/contexts/AppContext';
 import { lightTheme, darkTheme } from './src/constants/themes';
 import { RootStackParamList, TabParamList } from './src/types';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -139,10 +140,12 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AppProvider>
-        <AppNavigator />
-      </AppProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AppProvider>
+          <AppNavigator />
+        </AppProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

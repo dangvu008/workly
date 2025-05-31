@@ -213,11 +213,23 @@ class WorkManager {
     }
   }
 
-  // Handle button press
+  // Handle button press - Improved with better validation and error handling
   async handleButtonPress(buttonState: ButtonState): Promise<void> {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const now = new Date().toISOString();
+
+      // Validate active shift exists
+      const activeShift = await storageService.getActiveShift();
+      if (!activeShift) {
+        throw new Error('Không có ca làm việc đang hoạt động. Vui lòng chọn ca làm việc trước.');
+      }
+
+      // Validate button state
+      const validStates: ButtonState[] = ['go_work', 'check_in', 'check_out', 'complete'];
+      if (!validStates.includes(buttonState)) {
+        throw new Error(`Trạng thái button không hợp lệ: ${buttonState}`);
+      }
 
       let logType: AttendanceLog['type'];
 
@@ -226,27 +238,27 @@ class WorkManager {
           logType = 'go_work';
           // Setup location for first time if needed
           await this.setupLocationIfNeeded('home');
-          // Lần đầu sử dụng: Kích hoạt logic xác định vị trí Nhà
           console.log('🏠 Đã xác nhận đi làm - Ghi nhận vị trí nhà');
           break;
         case 'check_in':
           logType = 'check_in';
           // Setup work location for first time if needed
           await this.setupLocationIfNeeded('work');
-          // Lần đầu sử dụng: Kích hoạt logic xác định vị trí Công ty, kiểm tra khoảng cách
           console.log('🏢 Đã check-in - Ghi nhận vị trí công ty');
           break;
         case 'check_out':
           logType = 'check_out';
+          console.log('📤 Đã check-out');
           break;
         case 'complete':
           logType = 'complete';
+          console.log('✅ Đã hoàn tất ca làm việc');
           break;
         default:
           throw new Error(`Trạng thái button không hợp lệ: ${buttonState}`);
       }
 
-      // Add log
+      // Add log with validation
       await storageService.addAttendanceLog(today, {
         type: logType,
         time: now,
@@ -258,9 +270,17 @@ class WorkManager {
       // Cancel related notifications
       await this.cancelRelatedNotifications(logType);
 
+      console.log(`✅ Đã xử lý thành công button press: ${buttonState} -> ${logType}`);
+
     } catch (error) {
       console.error('Error handling button press:', error);
-      throw error;
+
+      // Enhance error message for user
+      if (error instanceof Error) {
+        throw new Error(`Lỗi xử lý chấm công: ${error.message}`);
+      }
+
+      throw new Error('Có lỗi không xác định khi xử lý chấm công. Vui lòng thử lại.');
     }
   }
 

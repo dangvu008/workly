@@ -42,8 +42,31 @@ export function ManualStatusUpdateModal({
   }
 
   if (!date) {
-    console.log('❌ No date provided');
-    return null;
+    console.log('❌ No date provided, using today as fallback');
+    // Fallback to today's date if no date provided
+    const fallbackDate = format(new Date(), 'yyyy-MM-dd');
+    console.log('📅 Using fallback date:', fallbackDate);
+
+    // Don't return null, use fallback date instead
+    let dateObj: Date;
+    try {
+      dateObj = new Date();
+    } catch (error) {
+      console.log('❌ Error creating fallback date:', error);
+      return null;
+    }
+
+    const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
+    const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });
+
+    console.log('✅ Modal rendering with fallback date:', formattedDate);
+
+    // Continue with fallback date...
+    const isDatePastOrToday = true; // Today is always past or today
+    const hasManualStatus = false; // No status for fallback
+
+    // Use simplified rendering for fallback
+    return renderSimpleModal(dateObj, dayOfWeek, formattedDate, true, false);
   }
 
   let dateObj: Date;
@@ -66,6 +89,60 @@ export function ManualStatusUpdateModal({
   const isDateFuture = isFuture(dateObj) && !isToday(dateObj);
   const isDatePastOrToday = isPast(dateObj) || isToday(dateObj);
   const hasManualStatus = currentStatus?.isManualOverride;
+
+  // Helper function for simplified modal rendering
+  function renderSimpleModal(dateObj: Date, dayOfWeek: string, formattedDate: string, isDatePastOrToday: boolean, hasManualStatus: boolean) {
+    return (
+      <>
+        <Modal
+          visible={visible}
+          onDismiss={onDismiss}
+          contentContainerStyle={[
+            styles.container,
+            { backgroundColor: theme.colors.surface }
+          ]}
+        >
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.header}>
+              <View style={styles.headerContent}>
+                <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+                  Cập nhật trạng thái
+                </Text>
+                <IconButton
+                  icon="close"
+                  size={24}
+                  iconColor={theme.colors.onSurface}
+                  onPress={onDismiss}
+                />
+              </View>
+
+              <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
+                {dayOfWeek}, {formattedDate}
+              </Text>
+
+              {shift ? (
+                <Text style={[styles.shiftText, { color: theme.colors.primary }]}>
+                  Ca: {shift.name} ({shift.startTime} - {shift.endTime})
+                </Text>
+              ) : (
+                <Text style={[styles.shiftText, { color: theme.colors.error }]}>
+                  Chưa có ca làm việc được kích hoạt
+                </Text>
+              )}
+            </View>
+
+            <Button
+              mode="outlined"
+              onPress={onDismiss}
+              style={styles.cancelButton}
+            >
+              Đóng
+            </Button>
+          </ScrollView>
+        </Modal>
+      </>
+    );
+  }
 
   // Các trạng thái nghỉ có thể chọn
   const leaveStatuses: Array<{

@@ -9,6 +9,7 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
+import { ManualStatusUpdateModal } from '../components/ManualStatusUpdateModal';
 
 
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -42,6 +43,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Test modal states
+  const [testModalVisible, setTestModalVisible] = useState(false);
+  const [testDate, setTestDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   // Memoized responsive padding
   const responsivePadding = useMemo(() => getResponsivePadding(), []);
@@ -83,6 +88,27 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
   const [topNotes, setTopNotes] = React.useState<any[]>([]);
   const [expandedNotes, setExpandedNotes] = React.useState<Set<string>>(new Set());
+
+  // Test modal handlers
+  const handleTestStatusUpdate = async (status: any) => {
+    console.log('🧪 Test: Status update:', status);
+    Alert.alert('Test', `Cập nhật trạng thái: ${status}`);
+  };
+
+  const handleTestTimeEdit = async (checkInTime: string, checkOutTime: string) => {
+    console.log('🧪 Test: Time edit:', { checkInTime, checkOutTime });
+    Alert.alert('Test', `Chỉnh sửa giờ:\nVào: ${checkInTime}\nRa: ${checkOutTime}`);
+  };
+
+  const handleTestRecalculate = async () => {
+    console.log('🧪 Test: Recalculate from logs');
+    Alert.alert('Test', 'Tính lại từ logs chấm công');
+  };
+
+  const handleTestClearManual = async () => {
+    console.log('🧪 Test: Clear manual status');
+    Alert.alert('Test', 'Xóa trạng thái thủ công');
+  };
 
   // Get upcoming notes with advanced filtering
   const getUpcomingNotes = () => {
@@ -385,13 +411,23 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 Ca làm việc hiện tại
               </Text>
-              <IconButton
-                icon="pencil"
-                size={20}
-                iconColor={theme.colors.primary}
-                onPress={() => navigation.navigate('ShiftsTab')}
-                style={commonStyles.accessibleTouchTarget}
-              />
+              <View style={{ flexDirection: 'row' }}>
+                {/* Test Button */}
+                <IconButton
+                  icon="test-tube"
+                  size={20}
+                  iconColor={theme.colors.secondary}
+                  onPress={() => setTestModalVisible(true)}
+                  style={commonStyles.accessibleTouchTarget}
+                />
+                <IconButton
+                  icon="pencil"
+                  size={20}
+                  iconColor={theme.colors.primary}
+                  onPress={() => navigation.navigate('ShiftsTab')}
+                  style={commonStyles.accessibleTouchTarget}
+                />
+              </View>
             </View>
             <Text style={[styles.shiftName, { color: theme.colors.primary }]}>
               {state.activeShift?.name || 'Chưa chọn ca'}
@@ -554,6 +590,19 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </AnimatedCard>
       </ScrollView>
+
+      {/* Test Modal */}
+      <ManualStatusUpdateModal
+        visible={testModalVisible}
+        onDismiss={() => setTestModalVisible(false)}
+        date={testDate}
+        currentStatus={state.todayStatus}
+        shift={state.activeShift}
+        onStatusUpdate={handleTestStatusUpdate}
+        onTimeEdit={handleTestTimeEdit}
+        onRecalculateFromLogs={handleTestRecalculate}
+        onClearManualStatus={handleTestClearManual}
+      />
     </SafeAreaView>
   );
 }

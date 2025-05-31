@@ -23,6 +23,12 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const [manualUpdateModalVisible, setManualUpdateModalVisible] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔘 WeeklyStatusGrid: manualUpdateModalVisible changed to:', manualUpdateModalVisible);
+    console.log('🔘 WeeklyStatusGrid: selectedDate:', selectedDate);
+  }, [manualUpdateModalVisible, selectedDate]);
+
 
 
   // Get the current week (Monday to Sunday)
@@ -66,6 +72,9 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleDayPress = React.useCallback((date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
+
+    console.log('🔘 WeeklyStatusGrid: Day pressed:', dateString);
+    console.log('🔘 WeeklyStatusGrid: Setting modal visible to true');
 
     setSelectedDate(dateString);
     setManualUpdateModalVisible(true);
@@ -301,7 +310,10 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       {/* Manual Status Update Modal */}
       <ManualStatusUpdateModal
         visible={manualUpdateModalVisible}
-        onDismiss={() => setManualUpdateModalVisible(false)}
+        onDismiss={() => {
+          console.log('🔘 WeeklyStatusGrid: Modal dismissed');
+          setManualUpdateModalVisible(false);
+        }}
         date={selectedDate}
         currentStatus={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
         shift={state.activeShift}

@@ -48,42 +48,47 @@ export const TIME_CONSTANTS = {
 // Button states and their display info
 export const BUTTON_STATES = {
   go_work: {
-    text: 'Đi Làm',
+    text: 'ĐI LÀM',
     icon: '🚶‍♂️',
     color: '#4CAF50',
   },
-  waiting_checkin: {
-    text: 'Chờ Check-in',
+  awaiting_check_in: {
+    text: 'CHỜ CHECK-IN',
     icon: '⏳',
     color: '#FF9800',
   },
   check_in: {
-    text: 'Chấm Công Vào',
-    icon: '📥',
+    text: 'CHẤM CÔNG VÀO',
+    icon: '➡️',
     color: '#2196F3',
   },
   working: {
-    text: 'Đang Làm Việc',
+    text: 'ĐANG LÀM VIỆC',
     icon: '💼',
     color: '#9C27B0',
   },
+  awaiting_check_out: {
+    text: 'CHỜ CHECK-OUT',
+    icon: '⏳',
+    color: '#FF9800',
+  },
   check_out: {
-    text: 'Chấm Công Ra',
-    icon: '📤',
+    text: 'CHẤM CÔNG RA',
+    icon: '⬅️',
     color: '#FF5722',
   },
-  ready_complete: {
-    text: 'Sẵn Sàng Hoàn Tất',
+  awaiting_complete: {
+    text: 'CHỜ HOÀN TẤT',
     icon: '🏁',
     color: '#795548',
   },
   complete: {
-    text: 'Hoàn Tất',
+    text: 'HOÀN TẤT',
     icon: '✅',
     color: '#4CAF50',
   },
-  completed: {
-    text: 'Đã Hoàn Tất',
+  completed_day: {
+    text: 'ĐÃ HOÀN TẤT',
     icon: '✅',
     color: '#9E9E9E',
   },

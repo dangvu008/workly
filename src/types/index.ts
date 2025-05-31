@@ -142,13 +142,14 @@ export type RootStackParamList = {
 // Multi-function button states
 export type ButtonState =
   | 'go_work'
-  | 'waiting_checkin'
+  | 'awaiting_check_in'
   | 'check_in'
   | 'working'
+  | 'awaiting_check_out'
   | 'check_out'
-  | 'ready_complete'
+  | 'awaiting_complete'
   | 'complete'
-  | 'completed';
+  | 'completed_day';
 
 // Weekly status icons
 export type WeeklyStatusIcon =

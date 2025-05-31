@@ -261,6 +261,25 @@ class NotificationService {
     }
   }
 
+  // Hủy notification cụ thể theo loại và shift ID
+  async cancelSpecificReminder(type: 'departure' | 'checkin' | 'checkout', shiftId: string): Promise<void> {
+    try {
+      if (!this.isAvailable) return;
+
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const specificNotifications = scheduledNotifications.filter(
+        notification => notification.identifier.startsWith(`${type}_${shiftId}_`)
+      );
+
+      for (const notification of specificNotifications) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        console.log(`🔕 Đã hủy nhắc nhở ${type} cho ca ${shiftId}`);
+      }
+    } catch (error) {
+      console.error(`Error canceling ${type} reminders:`, error);
+    }
+  }
+
   async scheduleNoteReminder(note: Note): Promise<void> {
     try {
       await this.initialize();

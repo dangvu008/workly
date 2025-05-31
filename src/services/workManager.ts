@@ -134,13 +134,14 @@ class WorkManager {
     try {
       const logs = await storageService.getAttendanceLogsForDate(date);
       const activeShift = await storageService.getActiveShift();
+      const settings = await storageService.getUserSettings();
 
       if (!activeShift) {
         return 'go_work';
       }
 
-      // Use timeSyncService for intelligent state calculation
-      return await timeSyncService.getCurrentButtonState(activeShift, logs);
+      // Use timeSyncService for intelligent state calculation với mode
+      return await timeSyncService.getCurrentButtonState(activeShift, logs, settings.multiButtonMode);
     } catch (error) {
       console.error('Error getting current button state:', error);
       return 'go_work';
@@ -224,11 +225,15 @@ class WorkManager {
           logType = 'go_work';
           // Setup location for first time if needed
           await this.setupLocationIfNeeded('home');
+          // Lần đầu sử dụng: Kích hoạt logic xác định vị trí Nhà
+          console.log('🏠 Đã xác nhận đi làm - Ghi nhận vị trí nhà');
           break;
         case 'check_in':
           logType = 'check_in';
           // Setup work location for first time if needed
           await this.setupLocationIfNeeded('work');
+          // Lần đầu sử dụng: Kích hoạt logic xác định vị trí Công ty, kiểm tra khoảng cách
+          console.log('🏢 Đã check-in - Ghi nhận vị trí công ty');
           break;
         case 'check_out':
           logType = 'check_out';
@@ -237,7 +242,7 @@ class WorkManager {
           logType = 'complete';
           break;
         default:
-          throw new Error(`Invalid button state: ${buttonState}`);
+          throw new Error(`Trạng thái button không hợp lệ: ${buttonState}`);
       }
 
       // Add log
@@ -421,7 +426,7 @@ class WorkManager {
       const completeLog = logs.find(log => log.type === 'complete');
 
       // Determine status
-      let status: DailyWorkStatus['status'] = 'CHUA_DI';
+      let status: DailyWorkStatusNew['status'] = 'CHUA_DI';
       let vaoLogTime: string | null = null;
       let raLogTime: string | null = null;
 
@@ -727,15 +732,36 @@ class WorkManager {
   }
 
   private async cancelRelatedNotifications(logType: AttendanceLog['type']): Promise<void> {
-    // Cancel specific notifications based on log type
-    const scheduledNotifications = await notificationService.getAllScheduledNotifications();
+    try {
+      const activeShift = await storageService.getActiveShift();
+      if (!activeShift) return;
 
-    for (const notification of scheduledNotifications) {
-      const data = notification.content.data;
-      if (data?.type === logType) {
-        await notificationService.cancelShiftReminders();
-        break;
+      // Hủy notifications cụ thể theo loại log
+      switch (logType) {
+        case 'go_work':
+          // Hủy nhắc nhở "Departure Notification"
+          await notificationService.cancelSpecificReminder('departure', activeShift.id);
+          console.log('🔕 Đã hủy nhắc nhở khởi hành');
+          break;
+        case 'check_in':
+          // Hủy nhắc nhở "Check-In Notification"
+          await notificationService.cancelSpecificReminder('checkin', activeShift.id);
+          console.log('🔕 Đã hủy nhắc nhở check-in');
+          break;
+        case 'check_out':
+          // Hủy nhắc nhở "Check-Out Notification"
+          await notificationService.cancelSpecificReminder('checkout', activeShift.id);
+          console.log('🔕 Đã hủy nhắc nhở check-out');
+          break;
+        case 'complete':
+          // Không cần hủy notification nào cho complete
+          console.log('✅ Hoàn tất ca làm việc');
+          break;
+        default:
+          break;
       }
+    } catch (error) {
+      console.error('Error canceling related notifications:', error);
     }
   }
 
@@ -744,8 +770,10 @@ class WorkManager {
     const activeShift = await storageService.getActiveShift();
 
     if (activeShift) {
-      const status = await this.calculateDailyWorkStatus(date, logs, activeShift);
-      await storageService.setDailyWorkStatusForDate(date, status);
+      // Sử dụng logic mới để tính toán work status
+      const status = await this.calculateDailyWorkStatusNew(date, logs, activeShift);
+      await storageService.setDailyWorkStatusNewForDate(date, status);
+      console.log(`📊 Đã cập nhật work status cho ${date}:`, status.status);
     }
   }
 }

@@ -147,7 +147,7 @@ class TimeSyncService {
   }
 
   // Get current button state based on time and logs
-  async getCurrentButtonState(shift: Shift, logs: AttendanceLog[]): Promise<ButtonState> {
+  async getCurrentButtonState(shift: Shift, logs: AttendanceLog[], mode?: 'simple' | 'full'): Promise<ButtonState> {
     const now = new Date();
     const today = startOfDay(now);
 
@@ -171,46 +171,54 @@ class TimeSyncService {
       format(parseISO(log.time), 'yyyy-MM-dd') === todayString
     );
 
-    // Determine state based on logs and time
-    const completeLog = todayLogs.find(log => log.type === 'complete');
-    if (completeLog) {
-      return 'completed';
-    }
-
+    // Determine state based on logs and time - Logic theo thiết kế mới
     const goWorkLog = todayLogs.find(log => log.type === 'go_work');
     const checkInLog = todayLogs.find(log => log.type === 'check_in');
     const checkOutLog = todayLogs.find(log => log.type === 'check_out');
+    const completeLog = todayLogs.find(log => log.type === 'complete');
 
+    // Xử lý mode 'simple'
+    if (mode === 'simple') {
+      if (!goWorkLog) {
+        return 'go_work'; // "ĐI LÀM"
+      } else {
+        return 'completed_day'; // "ĐÃ XÁC NHẬN ĐI LÀM" (disabled)
+      }
+    }
+
+    // Logic cho mode 'full' (mặc định)
+    // 1. Chưa có log go_work -> trạng thái "ĐI LÀM"
     if (!goWorkLog) {
       return 'go_work';
     }
 
+    // 2. Đã có go_work, chưa có check_in
     if (!checkInLog) {
-      // Check if it's time to check in (within 30 minutes of start time)
+      // Kiểm tra xem đã đến thời điểm cho phép check-in chưa (trong khoảng 30 phút quanh scheduledStartTime)
       const timeDiff = Math.abs(now.getTime() - scheduledStartTimeFull.getTime()) / (1000 * 60);
       if (timeDiff <= 30) {
-        return 'check_in';
+        return 'check_in'; // "CHẤM CÔNG VÀO"
       }
-      return 'waiting_checkin';
+      return 'awaiting_check_in'; // "CHỜ CHECK-IN"
     }
 
+    // 3. Đã có check_in, chưa có check_out
     if (!checkOutLog) {
-      // Check if it's time to check out (after end time or within 30 minutes before)
+      // Kiểm tra xem đã đến thời điểm cho phép check-out chưa (sau thời gian làm việc tối thiểu hoặc gần scheduledOfficeEndTime)
       const timeDiff = (now.getTime() - scheduledOfficeEndTimeFull.getTime()) / (1000 * 60);
       if (timeDiff >= -30) {
-        return 'check_out';
+        return 'check_out'; // "CHẤM CÔNG RA"
       }
-      return 'working';
+      return 'working'; // "ĐANG LÀM VIỆC" (có thể tạm thời disabled)
     }
 
-    // Both check-in and check-out done
-    const timeDiff = (now.getTime() - scheduledEndTimeFull.getTime()) / (1000 * 60);
-
-    if (timeDiff >= 0) {
-      return 'complete';
+    // 4. Đã có check_out, chưa có complete
+    if (!completeLog) {
+      return 'awaiting_complete'; // "CHỜ HOÀN TẤT" hoặc có thể cho phép "HOÀN TẤT" ngay
     }
 
-    return 'ready_complete';
+    // 5. Đã hoàn tất tất cả
+    return 'completed_day'; // "ĐÃ HOÀN TẤT"
   }
 
   // Check if attendance history should be shown

@@ -19,10 +19,13 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const [hasTodayLogs, setHasTodayLogs] = useState(false);
 
   const buttonConfig = BUTTON_STATES[state.currentButtonState];
-  const isDisabled = state.currentButtonState === 'completed' ||
-                    state.currentButtonState === 'waiting_checkin' ||
+
+  // Logic disabled theo thiết kế mới
+  const isDisabled = state.currentButtonState === 'completed_day' ||
+                    state.currentButtonState === 'awaiting_check_in' ||
                     state.currentButtonState === 'working' ||
-                    state.currentButtonState === 'ready_complete';
+                    state.currentButtonState === 'awaiting_check_out' ||
+                    state.currentButtonState === 'awaiting_complete';
 
   // Check if there are attendance logs for today
   useEffect(() => {
@@ -106,8 +109,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
     return [baseColor, baseColor + '80'];
   };
 
-  // Show reset button only if there are attendance logs for today
-  const showResetButton = hasTodayLogs;
+  // Show reset button theo thiết kế mới: khi đã hoàn tất hoặc có logs
+  const showResetButton = state.currentButtonState === 'completed_day' || hasTodayLogs;
 
   return (
     <View style={styles.container}>
@@ -161,9 +164,9 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
         )}
       </View>
 
-      {/* Punch button for shifts that require it */}
+      {/* Punch button theo thiết kế mới: chỉ khi đã check-in và chưa check-out */}
       {state.activeShift?.showPunch &&
-       (state.currentButtonState === 'working' || state.currentButtonState === 'check_out') && (
+       (state.currentButtonState === 'working' || state.currentButtonState === 'awaiting_check_out') && (
         <Button
           mode="outlined"
           onPress={async () => {
@@ -270,6 +273,7 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
   const [isPressed, setIsPressed] = useState(false);
 
   const handlePress = async () => {
+    // Trong mode simple, chỉ cho phép bấm khi trạng thái là 'go_work'
     if (state.currentButtonState !== 'go_work') return;
 
     try {
@@ -288,6 +292,7 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
     }
   };
 
+  // Trong mode simple: disabled khi đã bấm (không phải go_work)
   const isDisabled = state.currentButtonState !== 'go_work';
   const buttonConfig = BUTTON_STATES.go_work;
 
@@ -328,7 +333,7 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
               styles.buttonLabel,
               { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
             ]}>
-              {isDisabled ? 'Đã Đi Làm' : buttonConfig.text}
+              {isDisabled ? 'ĐÃ XÁC NHẬN ĐI LÀM' : buttonConfig.text}
             </Text>
           </View>
         </Button>

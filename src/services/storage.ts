@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  UserSettings, 
-  Shift, 
-  AttendanceLog, 
-  DailyWorkStatus, 
-  Note, 
+import {
+  UserSettings,
+  Shift,
+  AttendanceLog,
+  DailyWorkStatus,
+  DailyWorkStatusNew,
+  Note,
   PublicHoliday,
-  WeatherData 
+  WeatherData
 } from '../types';
 import { STORAGE_KEYS, DEFAULT_SETTINGS, DEFAULT_SHIFTS, DEFAULT_HOLIDAYS } from '../constants';
 
@@ -100,7 +101,7 @@ class StorageService {
   async getActiveShift(): Promise<Shift | null> {
     const activeShiftId = await this.getActiveShiftId();
     if (!activeShiftId) return null;
-    
+
     const shifts = await this.getShiftList();
     return shifts.find(s => s.id === activeShiftId) || null;
   }
@@ -152,6 +153,26 @@ class StorageService {
     const allStatus = await this.getDailyWorkStatus();
     allStatus[date] = status;
     return this.setDailyWorkStatus(allStatus);
+  }
+
+  // Methods for new DailyWorkStatusNew
+  async getDailyWorkStatusNew(): Promise<Record<string, DailyWorkStatusNew>> {
+    return this.getItem('DAILY_WORK_STATUS_NEW', {});
+  }
+
+  async setDailyWorkStatusNew(status: Record<string, DailyWorkStatusNew>): Promise<void> {
+    return this.setItem('DAILY_WORK_STATUS_NEW', status);
+  }
+
+  async getDailyWorkStatusNewForDate(date: string): Promise<DailyWorkStatusNew | null> {
+    const allStatus = await this.getDailyWorkStatusNew();
+    return allStatus[date] || null;
+  }
+
+  async setDailyWorkStatusNewForDate(date: string, status: DailyWorkStatusNew): Promise<void> {
+    const allStatus = await this.getDailyWorkStatusNew();
+    allStatus[date] = status;
+    return this.setDailyWorkStatusNew(allStatus);
   }
 
   // Notes
@@ -236,7 +257,7 @@ class StorageService {
   async importData(jsonData: string): Promise<void> {
     try {
       const data = JSON.parse(jsonData);
-      
+
       // Validate data structure
       if (!data.version || !data.exportDate) {
         throw new Error('Invalid backup file format');
@@ -250,7 +271,7 @@ class StorageService {
       if (data.dailyWorkStatus) await this.setDailyWorkStatus(data.dailyWorkStatus);
       if (data.notes) await this.setNotes(data.notes);
       if (data.publicHolidays) await this.setPublicHolidays(data.publicHolidays);
-      
+
     } catch (error) {
       console.error('Error importing data:', error);
       throw error;

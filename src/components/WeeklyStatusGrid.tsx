@@ -38,6 +38,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const getStatusIcon = (date: Date): string => {
     const status = getStatusForDate(date);
+    const dateString = format(date, 'yyyy-MM-dd');
 
     if (!status) {
       if (isFuture(date) && !isToday(date)) {
@@ -46,7 +47,9 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       return WEEKLY_STATUS.absent.icon;
     }
 
-    return WEEKLY_STATUS[status.status]?.icon || WEEKLY_STATUS.pending.icon;
+    const icon = WEEKLY_STATUS[status.status]?.icon || WEEKLY_STATUS.pending.icon;
+    console.log(`📊 Status for ${dateString}:`, status.status, '→', icon);
+    return icon;
   };
 
   const getStatusColor = (date: Date): string => {
@@ -64,6 +67,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleDayPress = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
+    console.log('📅 Day pressed:', dateString);
     setSelectedDate(dateString);
     setManualUpdateModalVisible(true); // Mở modal cập nhật thủ công thay vì detail modal
     onDayPress?.(dateString);
@@ -81,10 +85,12 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   // Handlers cho ManualStatusUpdateModal
   const handleStatusUpdate = async (status: DailyWorkStatus['status']) => {
     try {
+      console.log('🔄 Updating status for', selectedDate, 'to', status);
       await workManager.setManualWorkStatus(selectedDate, status);
       await actions.refreshWeeklyStatus();
+      console.log('✅ Status updated successfully');
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('❌ Error updating status:', error);
       throw error;
     }
   };

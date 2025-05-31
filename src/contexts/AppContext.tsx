@@ -11,7 +11,7 @@ import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
 import { weatherService } from '../services/weather';
 import { notificationService } from '../services/notifications';
-import { format } from 'date-fns';
+import { format, addDays, startOfWeek } from 'date-fns';
 
 // State interface
 interface AppState {
@@ -532,10 +532,12 @@ export function AppProvider({ children }: AppProviderProps) {
       const weeklyStatus: Record<string, DailyWorkStatus> = {};
       const today = new Date();
 
-      // Get status for the past 7 days
-      for (let i = -6; i <= 0; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
+      // Get current week (Monday to Sunday) - same logic as WeeklyStatusGrid
+      const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+
+      // Get status for all 7 days of current week
+      for (let i = 0; i < 7; i++) {
+        const date = addDays(startOfCurrentWeek, i);
         const dateString = format(date, 'yyyy-MM-dd');
 
         const status = await storageService.getDailyWorkStatusForDate(dateString);
@@ -544,6 +546,7 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       }
 
+      console.log('📅 Refreshed weekly status:', Object.keys(weeklyStatus));
       dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
     } catch (error) {
       console.error('Error refreshing weekly status:', error);

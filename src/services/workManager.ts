@@ -875,9 +875,9 @@ class WorkManager {
     const activeShift = await storageService.getActiveShift();
 
     if (activeShift) {
-      // Sử dụng logic mới để tính toán work status
-      const status = await this.calculateDailyWorkStatusNew(date, logs, activeShift);
-      await storageService.setDailyWorkStatusNewForDate(date, status);
+      // Sử dụng logic cũ để tính toán work status (để tương thích với WeeklyStatusGrid)
+      const status = await this.calculateDailyWorkStatus(date, logs, activeShift);
+      await storageService.setDailyWorkStatusForDate(date, status);
       console.log(`📊 Đã cập nhật work status cho ${date}:`, status.status);
     }
   }
@@ -885,6 +885,7 @@ class WorkManager {
   // Cập nhật trạng thái thủ công (nghỉ phép, bệnh, etc.)
   async setManualWorkStatus(date: string, status: DailyWorkStatus['status']): Promise<void> {
     try {
+      console.log(`✋ Setting manual work status for ${date} to ${status}`);
       const activeShift = await storageService.getActiveShift();
 
       // Tạo DailyWorkStatus với trạng thái thủ công
@@ -904,9 +905,13 @@ class WorkManager {
       };
 
       await storageService.setDailyWorkStatusForDate(date, manualStatus);
-      console.log(`✋ Đã cập nhật trạng thái thủ công cho ${date}:`, status);
+      console.log(`✅ Successfully set manual work status for ${date}:`, status);
+
+      // Verify the data was saved
+      const savedStatus = await storageService.getDailyWorkStatusForDate(date);
+      console.log(`🔍 Verified saved status for ${date}:`, savedStatus?.status);
     } catch (error) {
-      console.error('Error setting manual work status:', error);
+      console.error('❌ Error setting manual work status:', error);
       throw error;
     }
   }

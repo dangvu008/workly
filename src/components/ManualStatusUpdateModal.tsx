@@ -35,10 +35,12 @@ export function ManualStatusUpdateModal({
 
   if (!visible) return null;
 
+  console.log('📅 ManualStatusUpdateModal rendered for date:', date, 'visible:', visible);
+
   const dateObj = parseISO(date);
   const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
   const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });
-  
+
   const isDateFuture = isFuture(dateObj) && !isToday(dateObj);
   const isDatePastOrToday = isPast(dateObj) || isToday(dateObj);
   const hasManualStatus = currentStatus?.isManualOverride;
@@ -86,7 +88,7 @@ export function ManualStatusUpdateModal({
     try {
       await onStatusUpdate(status);
       onDismiss();
-      
+
       const statusInfo = WEEKLY_STATUS[status];
       Alert.alert(
         'Thành công',
@@ -168,7 +170,7 @@ export function ManualStatusUpdateModal({
                 onPress={onDismiss}
               />
             </View>
-            
+
             <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
               {dayOfWeek}, {formattedDate}
             </Text>
@@ -188,7 +190,7 @@ export function ManualStatusUpdateModal({
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
                 Tính toán từ chấm công
               </Text>
-              
+
               <List.Item
                 title="Tính theo chấm công"
                 description="Tự động tính dựa trên log check-in/check-out"

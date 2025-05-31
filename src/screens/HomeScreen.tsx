@@ -9,6 +9,7 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
+import { WeeklyStatusDebug } from '../components/WeeklyStatusDebug';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
@@ -487,6 +488,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               ))}
             </Card.Content>
           </Card>
+        )}
+
+        {/* Weekly Status Debug - Temporary for testing */}
+        {__DEV__ && (
+          <AnimatedCard animationType="slideUp" delay={450} elevated>
+            <WeeklyStatusDebug />
+          </AnimatedCard>
         )}
 
         {/* Weekly Status Grid với animation */}

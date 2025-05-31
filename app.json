@@ -39,8 +39,7 @@
         "POST_NOTIFICATIONS",
         "USE_EXACT_ALARM",
         "SCHEDULE_EXACT_ALARM"
-      ],
-      "googleServicesFile": "./google-services.json"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -62,11 +61,6 @@
       "color": "#2196F3",
       "androidMode": "default",
       "androidCollapsedTitle": "Workly"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "workly-shift-management"
-      }
     }
   }
 }

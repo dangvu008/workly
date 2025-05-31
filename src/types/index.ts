@@ -132,7 +132,7 @@ export type TabParamList = {
 };
 
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: { screen?: keyof TabParamList } | undefined;
   ShiftManagement: { mode?: 'select_rotation' };
   AddEditShift: { shiftId?: string; applyImmediately?: boolean };
   NoteDetail: { noteId?: string };

@@ -284,7 +284,14 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              // Fallback: navigate to NotesTab if can't go back
+              navigation.navigate('MainTabs', { screen: 'NotesTab' });
+            }
+          }}
         />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           {isEditing ? 'Chỉnh Sửa Ghi Chú' : 'Thêm Ghi Chú Mới'}

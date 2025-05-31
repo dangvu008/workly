@@ -45,22 +45,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-location",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#2196F3",
-          "defaultChannel": "default",
-          "sounds": []
-        }
-      ]
-    ],
-    "notification": {
-      "icon": "./assets/icon.png",
-      "color": "#2196F3",
-      "androidMode": "default",
-      "androidCollapsedTitle": "Workly"
-    }
+      "expo-location"
+    ]
   }
 }

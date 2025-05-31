@@ -438,23 +438,36 @@ class WorkManager {
         const checkInTime = parseISO(checkInLog.time);
         const checkOutTime = parseISO(checkOutLog.time);
 
-        // Check if late or early
-        const lateThreshold = settings.lateThresholdMinutes || 15;
-        const isLate = checkInTime > addMinutes(scheduledStartTimeFull, lateThreshold);
-        const isEarly = checkOutTime < subMinutes(scheduledOfficeEndTimeFull, 30);
+        // Logic "Bấm Nhanh" (Rapid Press Detection)
+        const actualWorkDurationSeconds = (checkOutTime.getTime() - checkInTime.getTime()) / 1000;
+        const rapidThresholdSeconds = settings.rapidPressThresholdSeconds || 60;
+        const isRapidPress = actualWorkDurationSeconds < rapidThresholdSeconds;
 
-        if (isLate && isEarly) {
-          status = 'DI_MUON_VE_SOM';
-        } else if (isLate) {
-          status = 'DI_MUON';
-        } else if (isEarly) {
-          status = 'VE_SOM';
-        } else {
+        if (isRapidPress) {
+          // Xác định là "Bấm Nhanh" - Ghi nhận như một ngày làm việc đầy đủ
           status = 'DU_CONG';
-        }
+          vaoLogTime = checkInLog.time;
+          raLogTime = checkOutLog.time;
+          console.log(`⚡ Phát hiện "Bấm Nhanh": ${actualWorkDurationSeconds}s < ${rapidThresholdSeconds}s - Ghi nhận DU_CONG`);
+        } else {
+          // Logic bình thường - Kiểm tra đi muộn/về sớm
+          const lateThreshold = settings.lateThresholdMinutes || 15;
+          const isLate = checkInTime > addMinutes(scheduledStartTimeFull, lateThreshold);
+          const isEarly = checkOutTime < subMinutes(scheduledOfficeEndTimeFull, 30);
 
-        vaoLogTime = checkInLog.time;
-        raLogTime = checkOutLog.time;
+          if (isLate && isEarly) {
+            status = 'DI_MUON_VE_SOM';
+          } else if (isLate) {
+            status = 'DI_MUON';
+          } else if (isEarly) {
+            status = 'VE_SOM';
+          } else {
+            status = 'DU_CONG';
+          }
+
+          vaoLogTime = checkInLog.time;
+          raLogTime = checkOutLog.time;
+        }
       } else if (checkInLog) {
         status = 'CHUA_RA';
         vaoLogTime = checkInLog.time;

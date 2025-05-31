@@ -11,6 +11,7 @@ export interface UserSettings {
   timeFormat: '12h' | '24h';
   firstDayOfWeek: 'Mon' | 'Sun';
   lateThresholdMinutes: number;
+  rapidPressThresholdSeconds: number; // Ngưỡng phát hiện "Bấm Nhanh" (giây)
   overtimeRates: {
     weekday: number;
     saturday: number;

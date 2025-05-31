@@ -152,6 +152,73 @@ export const WEEKLY_STATUS = {
     color: '#FF5722',
     text: 'Cần xem lại',
   },
+  // Các trạng thái nghỉ mới theo yêu cầu
+  NGHI_PHEP: {
+    icon: '🏖️',
+    color: '#00BCD4',
+    text: 'Nghỉ Phép',
+  },
+  NGHI_BENH: {
+    icon: '🏥',
+    color: '#FF9800',
+    text: 'Nghỉ Bệnh',
+  },
+  NGHI_LE: {
+    icon: '🎌',
+    color: '#E91E63',
+    text: 'Nghỉ Lễ',
+  },
+  VANG_MAT: {
+    icon: '❌',
+    color: '#F44336',
+    text: 'Vắng Mặt',
+  },
+  CONG_TAC: {
+    icon: '✈️',
+    color: '#673AB7',
+    text: 'Công Tác',
+  },
+  DU_CONG: {
+    icon: '✅',
+    color: '#4CAF50',
+    text: 'Đủ Công',
+  },
+  RV: {
+    icon: 'RV',
+    color: '#FF5722',
+    text: 'Cần Xem Lại',
+  },
+  // Các trạng thái từ DailyWorkStatusNew
+  DI_MUON: {
+    icon: '⏰',
+    color: '#FF9800',
+    text: 'Đi Muộn',
+  },
+  VE_SOM: {
+    icon: '🏃‍♂️',
+    color: '#2196F3',
+    text: 'Về Sớm',
+  },
+  DI_MUON_VE_SOM: {
+    icon: '⚠️',
+    color: '#FF5722',
+    text: 'Đi Muộn & Về Sớm',
+  },
+  CHUA_DI: {
+    icon: '🏠',
+    color: '#9E9E9E',
+    text: 'Chưa Đi',
+  },
+  DA_DI_CHUA_VAO: {
+    icon: '🚶‍♂️',
+    color: '#FFC107',
+    text: 'Đã Đi Chưa Vào',
+  },
+  CHUA_RA: {
+    icon: '💼',
+    color: '#9C27B0',
+    text: 'Chưa Ra',
+  },
 } as const;
 
 // Weather warning types

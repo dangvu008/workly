@@ -54,7 +54,7 @@ export interface AttendanceLog {
 }
 
 export interface DailyWorkStatus {
-  status: 'completed' | 'late' | 'early' | 'absent' | 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review' | 'pending';
+  status: 'completed' | 'late' | 'early' | 'absent' | 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review' | 'pending' | 'NGHI_PHEP' | 'NGHI_BENH' | 'NGHI_LE' | 'VANG_MAT' | 'CONG_TAC' | 'DU_CONG' | 'RV' | 'DI_MUON' | 'VE_SOM' | 'DI_MUON_VE_SOM' | 'CHUA_DI' | 'DA_DI_CHUA_VAO' | 'CHUA_RA';
   vaoLogTime?: string; // ISO 8601 timestamp
   raLogTime?: string; // ISO 8601 timestamp
   standardHoursScheduled: number;
@@ -65,6 +65,7 @@ export interface DailyWorkStatus {
   lateMinutes: number;
   earlyMinutes: number;
   isHolidayWork: boolean;
+  isManualOverride?: boolean; // Đánh dấu trạng thái được cập nhật thủ công
 }
 
 // New DailyWorkStatus with enhanced logic

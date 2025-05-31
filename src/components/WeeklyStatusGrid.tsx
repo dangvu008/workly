@@ -7,7 +7,9 @@ import { useApp } from '../contexts/AppContext';
 import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
 import { DailyWorkStatus } from '../types';
 import { storageService } from '../services/storage';
+import { workManager } from '../services/workManager';
 import { DayDetailModal } from './DayDetailModal';
+import { ManualStatusUpdateModal } from './ManualStatusUpdateModal';
 
 interface WeeklyStatusGridProps {
   onDayPress?: (date: string) => void;
@@ -18,6 +20,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const { state, actions } = useApp();
   const [menuVisible, setMenuVisible] = React.useState<string | null>(null);
   const [modalVisible, setModalVisible] = React.useState(false);
+  const [manualUpdateModalVisible, setManualUpdateModalVisible] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
   // Get the current week (Monday to Sunday)
@@ -62,7 +65,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const handleDayPress = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
     setSelectedDate(dateString);
-    setModalVisible(true);
+    setManualUpdateModalVisible(true); // Mở modal cập nhật thủ công thay vì detail modal
     onDayPress?.(dateString);
   };
 
@@ -75,6 +78,48 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
     }
   };
 
+  // Handlers cho ManualStatusUpdateModal
+  const handleStatusUpdate = async (status: DailyWorkStatus['status']) => {
+    try {
+      await workManager.setManualWorkStatus(selectedDate, status);
+      await actions.refreshWeeklyStatus();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      throw error;
+    }
+  };
+
+  const handleTimeEdit = async (checkInTime: string, checkOutTime: string) => {
+    try {
+      await workManager.updateAttendanceTime(selectedDate, checkInTime, checkOutTime);
+      await actions.refreshWeeklyStatus();
+    } catch (error) {
+      console.error('Error updating time:', error);
+      throw error;
+    }
+  };
+
+  const handleRecalculateFromLogs = async () => {
+    try {
+      await workManager.recalculateFromAttendanceLogs(selectedDate);
+      await actions.refreshWeeklyStatus();
+    } catch (error) {
+      console.error('Error recalculating from logs:', error);
+      throw error;
+    }
+  };
+
+  const handleClearManualStatus = async () => {
+    try {
+      await workManager.clearManualStatusAndRecalculate(selectedDate);
+      await actions.refreshWeeklyStatus();
+    } catch (error) {
+      console.error('Error clearing manual status:', error);
+      throw error;
+    }
+  };
+
+  // Legacy handler for old menu (keep for backward compatibility)
   const handleManualStatusUpdate = async (date: string, status: 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review') => {
     try {
       const manualStatus: DailyWorkStatus = {
@@ -246,6 +291,19 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         date={selectedDate}
         status={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
         shift={state.activeShift}
+      />
+
+      {/* Manual Status Update Modal */}
+      <ManualStatusUpdateModal
+        visible={manualUpdateModalVisible}
+        onDismiss={() => setManualUpdateModalVisible(false)}
+        date={selectedDate}
+        currentStatus={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
+        shift={state.activeShift}
+        onStatusUpdate={handleStatusUpdate}
+        onTimeEdit={handleTimeEdit}
+        onRecalculateFromLogs={handleRecalculateFromLogs}
+        onClearManualStatus={handleClearManualStatus}
       />
     </>
   );

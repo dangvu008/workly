@@ -881,6 +881,104 @@ class WorkManager {
       console.log(`📊 Đã cập nhật work status cho ${date}:`, status.status);
     }
   }
+
+  // Cập nhật trạng thái thủ công (nghỉ phép, bệnh, etc.)
+  async setManualWorkStatus(date: string, status: DailyWorkStatus['status']): Promise<void> {
+    try {
+      const activeShift = await storageService.getActiveShift();
+
+      // Tạo DailyWorkStatus với trạng thái thủ công
+      const manualStatus: DailyWorkStatus = {
+        status,
+        standardHoursScheduled: 0, // Nghỉ = 0 giờ công
+        otHoursScheduled: 0,
+        sundayHoursScheduled: 0,
+        nightHoursScheduled: 0,
+        totalHoursScheduled: 0,
+        lateMinutes: 0,
+        earlyMinutes: 0,
+        isHolidayWork: status === 'NGHI_LE',
+        isManualOverride: true, // Đánh dấu là cập nhật thủ công
+        vaoLogTime: undefined,
+        raLogTime: undefined,
+      };
+
+      await storageService.setDailyWorkStatusForDate(date, manualStatus);
+      console.log(`✋ Đã cập nhật trạng thái thủ công cho ${date}:`, status);
+    } catch (error) {
+      console.error('Error setting manual work status:', error);
+      throw error;
+    }
+  }
+
+  // Tính lại trạng thái từ attendance logs (xóa manual override)
+  async recalculateFromAttendanceLogs(date: string): Promise<void> {
+    try {
+      const logs = await storageService.getAttendanceLogsForDate(date);
+      const activeShift = await storageService.getActiveShift();
+
+      if (!activeShift) {
+        throw new Error('Không có ca làm việc được kích hoạt');
+      }
+
+      // Tính toán lại status từ logs
+      const calculatedStatus = await this.calculateDailyWorkStatus(date, logs, activeShift);
+
+      // Xóa flag manual override
+      calculatedStatus.isManualOverride = false;
+
+      await storageService.setDailyWorkStatusForDate(date, calculatedStatus);
+      console.log(`🔄 Đã tính lại trạng thái từ logs cho ${date}:`, calculatedStatus.status);
+    } catch (error) {
+      console.error('Error recalculating from attendance logs:', error);
+      throw error;
+    }
+  }
+
+  // Cập nhật giờ chấm công thủ công
+  async updateAttendanceTime(date: string, checkInTime: string, checkOutTime: string): Promise<void> {
+    try {
+      // Xóa logs cũ cho ngày này
+      await storageService.clearAttendanceLogsForDate(date);
+
+      // Tạo logs mới với thời gian đã chỉnh sửa
+      const newLogs: AttendanceLog[] = [
+        {
+          type: 'check_in',
+          time: checkInTime,
+        },
+        {
+          type: 'check_out',
+          time: checkOutTime,
+        },
+      ];
+
+      // Lưu logs mới
+      for (const log of newLogs) {
+        await storageService.addAttendanceLog(date, log);
+      }
+
+      // Tính lại work status từ logs mới
+      await this.recalculateFromAttendanceLogs(date);
+
+      console.log(`⏰ Đã cập nhật giờ chấm công cho ${date}: ${checkInTime} - ${checkOutTime}`);
+    } catch (error) {
+      console.error('Error updating attendance time:', error);
+      throw error;
+    }
+  }
+
+  // Xóa trạng thái thủ công và tính lại
+  async clearManualStatusAndRecalculate(date: string): Promise<void> {
+    try {
+      // Tính lại từ attendance logs hiện có
+      await this.recalculateFromAttendanceLogs(date);
+      console.log(`🗑️ Đã xóa trạng thái thủ công và tính lại cho ${date}`);
+    } catch (error) {
+      console.error('Error clearing manual status:', error);
+      throw error;
+    }
+  }
 }
 
 export const workManager = new WorkManager();

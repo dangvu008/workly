@@ -155,31 +155,31 @@ export function ManualStatusUpdateModal({
       status: 'NGHI_PHEP',
       title: 'Nghỉ Phép',
       icon: 'beach',
-      description: 'Nghỉ phép có kế hoạch',
+      description: isDatePastOrToday ? 'Nghỉ phép có lương, đã được duyệt' : 'Đăng ký nghỉ phép cho ngày này',
     },
     {
       status: 'NGHI_BENH',
       title: 'Nghỉ Bệnh',
       icon: 'hospital-box',
-      description: 'Nghỉ ốm, khám bệnh',
+      description: isDatePastOrToday ? 'Nghỉ ốm, bệnh tật có giấy tờ' : 'Đăng ký nghỉ bệnh cho ngày này',
     },
     {
       status: 'NGHI_LE',
       title: 'Nghỉ Lễ',
       icon: 'flag',
-      description: 'Nghỉ lễ, tết',
+      description: isDatePastOrToday ? 'Nghỉ lễ, tết, ngày nghỉ chính thức' : 'Đánh dấu nghỉ lễ cho ngày này',
     },
     {
       status: 'VANG_MAT',
       title: 'Vắng Mặt',
       icon: 'account-remove',
-      description: 'Vắng mặt không phép',
+      description: isDatePastOrToday ? 'Vắng mặt không phép, không báo trước' : 'Đăng ký vắng mặt cho ngày này',
     },
     {
       status: 'CONG_TAC',
       title: 'Công Tác',
       icon: 'airplane',
-      description: 'Đi công tác',
+      description: isDatePastOrToday ? 'Đi công tác, làm việc tại địa điểm khác' : 'Đăng ký công tác cho ngày này',
     },
   ];
 
@@ -189,12 +189,17 @@ export function ManualStatusUpdateModal({
       onDismiss();
 
       const statusInfo = WEEKLY_STATUS[status];
+      const actionType = isDatePastOrToday ? 'cập nhật' : 'đăng ký';
+      const dateType = isToday(dateObj) ? 'hôm nay' :
+                      isPast(dateObj) ? `ngày ${format(dateObj, 'dd/MM')}` :
+                      `ngày ${format(dateObj, 'dd/MM')} (tương lai)`;
+
       Alert.alert(
-        'Thành công',
-        `Đã cập nhật trạng thái ngày ${format(dateObj, 'dd/MM')} thành "${statusInfo?.text}"`
+        '✅ Thành công',
+        `Đã ${actionType} trạng thái ${dateType} thành "${statusInfo?.text || status}"`
       );
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+      Alert.alert('❌ Lỗi', 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
     }
   };
 
@@ -202,31 +207,35 @@ export function ManualStatusUpdateModal({
     try {
       await onRecalculateFromLogs();
       onDismiss();
+
+      const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
       Alert.alert(
-        'Thành công',
-        `Đã tính lại trạng thái cho ngày ${format(dateObj, 'dd/MM')} dựa trên chấm công`
+        '🔄 Thành công',
+        `Đã tính lại trạng thái cho ${dateType} dựa trên dữ liệu chấm công thực tế`
       );
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể tính lại trạng thái. Vui lòng thử lại.');
+      Alert.alert('❌ Lỗi', 'Không thể tính lại trạng thái. Vui lòng thử lại.');
     }
   };
 
   const handleClearManual = async () => {
+    const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
+
     Alert.alert(
-      'Xác nhận',
-      `Bạn có chắc muốn xóa trạng thái thủ công và tính lại cho ngày ${format(dateObj, 'dd/MM')}?`,
+      '⚠️ Xác nhận xóa',
+      `Bạn có chắc muốn xóa trạng thái thủ công và tính lại cho ${dateType}?\n\nHệ thống sẽ tự động tính toán lại dựa trên dữ liệu chấm công thực tế.`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Xóa và tính lại',
           style: 'destructive',
           onPress: async () => {
             try {
               await onClearManualStatus();
               onDismiss();
-              Alert.alert('Thành công', 'Đã xóa trạng thái thủ công và tính lại');
+              Alert.alert('🗑️ Thành công', `Đã xóa trạng thái thủ công cho ${dateType} và tính lại từ chấm công`);
             } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa trạng thái. Vui lòng thử lại.');
+              Alert.alert('❌ Lỗi', 'Không thể xóa trạng thái. Vui lòng thử lại.');
             }
           },
         },
@@ -239,9 +248,14 @@ export function ManualStatusUpdateModal({
       await onTimeEdit(checkInTime, checkOutTime);
       setTimeEditVisible(false);
       onDismiss();
-      Alert.alert('Thành công', 'Đã cập nhật giờ chấm công');
+
+      const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
+      Alert.alert(
+        '🕐 Thành công',
+        `Đã cập nhật giờ chấm công cho ${dateType}\nVào: ${checkInTime}\nRa: ${checkOutTime}`
+      );
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cập nhật giờ chấm công. Vui lòng thử lại.');
+      Alert.alert('❌ Lỗi', 'Không thể cập nhật giờ chấm công. Vui lòng thử lại.');
     }
   };
 
@@ -276,13 +290,40 @@ export function ManualStatusUpdateModal({
               {dayOfWeek}, {formattedDate}
             </Text>
 
+            {/* Hiển thị loại ngày */}
+            <View style={styles.dateTypeContainer}>
+              <Text style={[
+                styles.dateTypeText,
+                {
+                  color: isDatePastOrToday
+                    ? (isToday(dateObj) ? theme.colors.primary : theme.colors.onSurfaceVariant)
+                    : theme.colors.secondary,
+                  backgroundColor: isDatePastOrToday
+                    ? (isToday(dateObj) ? theme.colors.primaryContainer : theme.colors.surfaceVariant)
+                    : theme.colors.secondaryContainer,
+                }
+              ]}>
+                {isToday(dateObj) ? '📅 Hôm nay' :
+                 isPast(dateObj) ? '⏪ Quá khứ' :
+                 '⏩ Tương lai'}
+              </Text>
+            </View>
+
             {shift ? (
               <Text style={[styles.shiftText, { color: theme.colors.primary }]}>
                 Ca: {shift.name} ({shift.startTime} - {shift.endTime})
               </Text>
             ) : (
               <Text style={[styles.shiftText, { color: theme.colors.error }]}>
-                Chưa có ca làm việc được kích hoạt
+                ⚠️ Chưa có ca làm việc được kích hoạt
+              </Text>
+            )}
+
+            {/* Hiển thị trạng thái hiện tại nếu có */}
+            {currentStatus && (
+              <Text style={[styles.currentStatusText, { color: theme.colors.outline }]}>
+                Trạng thái hiện tại: {WEEKLY_STATUS[currentStatus.status]?.text || currentStatus.status}
+                {hasManualStatus && ' (Thủ công)'}
               </Text>
             )}
           </View>
@@ -293,7 +334,7 @@ export function ManualStatusUpdateModal({
           {isDatePastOrToday && (
             <>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                Tính toán từ chấm công
+                📊 Tính toán từ chấm công
               </Text>
 
               <List.Item
@@ -330,7 +371,7 @@ export function ManualStatusUpdateModal({
 
           {/* Các trạng thái nghỉ */}
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Trạng thái nghỉ
+            {isDatePastOrToday ? '🏖️ Cập nhật trạng thái nghỉ' : '📝 Đăng ký trạng thái nghỉ'}
           </Text>
 
           {leaveStatuses.map((item) => (
@@ -395,6 +436,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     fontWeight: '500',
+  },
+  dateTypeContainer: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  dateTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  currentStatusText: {
+    fontSize: 12,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   sectionTitle: {
     fontSize: 16,

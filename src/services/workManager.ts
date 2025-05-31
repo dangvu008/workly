@@ -886,6 +886,9 @@ class WorkManager {
   async setManualWorkStatus(date: string, status: DailyWorkStatus['status']): Promise<void> {
     try {
       const activeShift = await storageService.getActiveShift();
+      const dateObj = new Date(date);
+      const today = new Date();
+      const isFutureDate = dateObj > today;
 
       // Tạo DailyWorkStatus với trạng thái thủ công
       const manualStatus: DailyWorkStatus = {
@@ -904,6 +907,13 @@ class WorkManager {
       };
 
       await storageService.setDailyWorkStatusForDate(date, manualStatus);
+
+      // Log khác nhau cho ngày tương lai vs quá khứ/hiện tại
+      if (isFutureDate) {
+        console.log(`📝 Đã đăng ký trạng thái nghỉ cho ngày tương lai ${date}:`, status);
+      } else {
+        console.log(`✏️ Đã cập nhật trạng thái thủ công cho ${date}:`, status);
+      }
     } catch (error) {
       console.error('Error setting manual work status:', error);
       throw error;

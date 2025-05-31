@@ -8,7 +8,6 @@ import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
 import { DailyWorkStatus } from '../types';
 import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
-import { DayDetailModal } from './DayDetailModal';
 import { ManualStatusUpdateModal } from './ManualStatusUpdateModal';
 
 interface WeeklyStatusGridProps {
@@ -19,7 +18,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
   const [menuVisible, setMenuVisible] = React.useState<string | null>(null);
-  const [modalVisible, setModalVisible] = React.useState(false);
   const [manualUpdateModalVisible, setManualUpdateModalVisible] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
@@ -297,15 +295,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
           </View>
         </Card.Content>
       </Card>
-
-      {/* Day Detail Modal */}
-      <DayDetailModal
-        visible={modalVisible}
-        onDismiss={() => setModalVisible(false)}
-        date={selectedDate}
-        status={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
-        shift={state.activeShift}
-      />
 
       {/* Manual Status Update Modal */}
       <ManualStatusUpdateModal

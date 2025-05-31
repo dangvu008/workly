@@ -33,11 +33,35 @@ export function ManualStatusUpdateModal({
   const theme = useTheme();
   const [timeEditVisible, setTimeEditVisible] = useState(false);
 
-  if (!visible) return null;
+  // Debug logs để kiểm tra
+  console.log('🔍 ManualStatusUpdateModal props:', { visible, date, hasCurrentStatus: !!currentStatus, hasShift: !!shift });
 
-  const dateObj = parseISO(date);
+  if (!visible) {
+    console.log('❌ Modal not visible');
+    return null;
+  }
+
+  if (!date) {
+    console.log('❌ No date provided');
+    return null;
+  }
+
+  let dateObj: Date;
+  try {
+    dateObj = parseISO(date);
+    if (isNaN(dateObj.getTime())) {
+      console.log('❌ Invalid date:', date);
+      return null;
+    }
+  } catch (error) {
+    console.log('❌ Error parsing date:', date, error);
+    return null;
+  }
+
   const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
   const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });
+
+  console.log('✅ Modal rendering for:', formattedDate);
 
   const isDateFuture = isFuture(dateObj) && !isToday(dateObj);
   const isDatePastOrToday = isPast(dateObj) || isToday(dateObj);
@@ -144,6 +168,8 @@ export function ManualStatusUpdateModal({
     }
   };
 
+  console.log('🎯 About to render Modal with visible:', visible);
+
   return (
     <>
       <Modal
@@ -173,9 +199,13 @@ export function ManualStatusUpdateModal({
               {dayOfWeek}, {formattedDate}
             </Text>
 
-            {shift && (
+            {shift ? (
               <Text style={[styles.shiftText, { color: theme.colors.primary }]}>
                 Ca: {shift.name} ({shift.startTime} - {shift.endTime})
+              </Text>
+            ) : (
+              <Text style={[styles.shiftText, { color: theme.colors.error }]}>
+                Chưa có ca làm việc được kích hoạt
               </Text>
             )}
           </View>

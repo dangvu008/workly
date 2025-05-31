@@ -64,9 +64,18 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleDayPress = (date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
+    console.log('📅 Day pressed:', dateString);
+    console.log('📅 Setting selectedDate to:', dateString);
+    console.log('📅 Setting manualUpdateModalVisible to: true');
+
     setSelectedDate(dateString);
     setManualUpdateModalVisible(true);
     onDayPress?.(dateString);
+
+    // Verify state after setting
+    setTimeout(() => {
+      console.log('📅 State after update - selectedDate:', dateString, 'modalVisible:', true);
+    }, 100);
   };
 
   const handleDayLongPress = (date: Date) => {
@@ -294,9 +303,18 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       />
 
       {/* Manual Status Update Modal */}
+      {console.log('🔍 Rendering ManualStatusUpdateModal with:', {
+        visible: manualUpdateModalVisible,
+        date: selectedDate,
+        hasCurrentStatus: selectedDate ? !!state.weeklyStatus[selectedDate] : false,
+        hasShift: !!state.activeShift
+      })}
       <ManualStatusUpdateModal
         visible={manualUpdateModalVisible}
-        onDismiss={() => setManualUpdateModalVisible(false)}
+        onDismiss={() => {
+          console.log('📅 Dismissing modal');
+          setManualUpdateModalVisible(false);
+        }}
         date={selectedDate}
         currentStatus={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
         shift={state.activeShift}

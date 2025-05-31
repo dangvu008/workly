@@ -9,6 +9,7 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
+import { ModalTestButton } from '../components/ModalTestButton';
 
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
@@ -478,9 +479,16 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
 
 
+        {/* Modal Test Button - Debug only */}
+        {__DEV__ && (
+          <AnimatedCard animationType="slideUp" delay={480} elevated>
+            <ModalTestButton />
+          </AnimatedCard>
+        )}
+
         {/* Weekly Status Grid với animation */}
         <AnimatedCard animationType="slideUp" delay={500} elevated>
-          <MemoizedWeeklyStatusGrid onDayPress={(date) => {
+          <MemoizedWeeklyStatusGrid onDayPress={() => {
             // Day press handled by WeeklyStatusGrid internally
           }} />
         </AnimatedCard>

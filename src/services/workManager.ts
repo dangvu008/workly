@@ -885,7 +885,6 @@ class WorkManager {
   // Cập nhật trạng thái thủ công (nghỉ phép, bệnh, etc.)
   async setManualWorkStatus(date: string, status: DailyWorkStatus['status']): Promise<void> {
     try {
-      console.log(`✋ Setting manual work status for ${date} to ${status}`);
       const activeShift = await storageService.getActiveShift();
 
       // Tạo DailyWorkStatus với trạng thái thủ công
@@ -905,13 +904,8 @@ class WorkManager {
       };
 
       await storageService.setDailyWorkStatusForDate(date, manualStatus);
-      console.log(`✅ Successfully set manual work status for ${date}:`, status);
-
-      // Verify the data was saved
-      const savedStatus = await storageService.getDailyWorkStatusForDate(date);
-      console.log(`🔍 Verified saved status for ${date}:`, savedStatus?.status);
     } catch (error) {
-      console.error('❌ Error setting manual work status:', error);
+      console.error('Error setting manual work status:', error);
       throw error;
     }
   }

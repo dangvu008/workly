@@ -9,7 +9,7 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
-import { WeeklyStatusDebug } from '../components/WeeklyStatusDebug';
+
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
@@ -452,21 +452,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </AnimatedCard>
         )}
 
-        {/* Time Display Info for debugging */}
-        {state.timeDisplayInfo && !state.timeDisplayInfo.shouldShowButton && (
-          <AnimatedCard animationType="fadeIn" delay={300}>
-            <Card.Content>
-              <Text style={[commonStyles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
-                {state.timeDisplayInfo.currentPhase === 'inactive' &&
-                  `Nút sẽ hiện lại sau ${Math.floor(state.timeDisplayInfo.timeUntilNextReset / 60)}h ${state.timeDisplayInfo.timeUntilNextReset % 60}m`
-                }
-                {state.timeDisplayInfo.currentPhase === 'after_work' &&
-                  'Đã kết thúc ca làm việc'
-                }
-              </Text>
-            </Card.Content>
-          </AnimatedCard>
-        )}
+
 
         {/* Attendance History */}
         {attendanceHistory.length > 0 && (
@@ -490,18 +476,12 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card>
         )}
 
-        {/* Weekly Status Debug - Temporary for testing */}
-        {__DEV__ && (
-          <AnimatedCard animationType="slideUp" delay={450} elevated>
-            <WeeklyStatusDebug />
-          </AnimatedCard>
-        )}
+
 
         {/* Weekly Status Grid với animation */}
         <AnimatedCard animationType="slideUp" delay={500} elevated>
           <MemoizedWeeklyStatusGrid onDayPress={(date) => {
-            // Could navigate to day detail or show more info
-            console.log('Day pressed:', date);
+            // Day press handled by WeeklyStatusGrid internally
           }} />
         </AnimatedCard>
 

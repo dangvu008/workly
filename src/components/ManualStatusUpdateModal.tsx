@@ -35,8 +35,6 @@ export function ManualStatusUpdateModal({
 
   if (!visible) return null;
 
-  console.log('📅 ManualStatusUpdateModal rendered for date:', date, 'visible:', visible);
-
   const dateObj = parseISO(date);
   const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
   const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });

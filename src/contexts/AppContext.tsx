@@ -546,7 +546,6 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       }
 
-      console.log('📅 Refreshed weekly status:', Object.keys(weeklyStatus));
       dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
     } catch (error) {
       console.error('Error refreshing weekly status:', error);

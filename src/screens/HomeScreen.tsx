@@ -79,38 +79,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     }
   }, [refreshing, isRefreshingData, actions]);
 
-  const getAttendanceHistory = () => {
-    // Luôn hiển thị history khi có active shift
-    if (!state.activeShift) {
-      return [];
-    }
 
-    const todayStatus = state.todayStatus;
-
-    if (!todayStatus) {
-      return [];
-    }
-
-    const history = [];
-
-    if (todayStatus.vaoLogTime) {
-      history.push({
-        action: 'Chấm công vào',
-        time: format(new Date(todayStatus.vaoLogTime), 'HH:mm:ss'),
-        icon: '📥',
-      });
-    }
-
-    if (todayStatus.raLogTime) {
-      history.push({
-        action: 'Chấm công ra',
-        time: format(new Date(todayStatus.raLogTime), 'HH:mm:ss'),
-        icon: '📤',
-      });
-    }
-
-    return history;
-  };
 
   const [topNotes, setTopNotes] = React.useState<any[]>([]);
   const [expandedNotes, setExpandedNotes] = React.useState<Set<string>>(new Set());
@@ -370,8 +339,6 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     }
   };
 
-  const attendanceHistory = getAttendanceHistory();
-
   // Show loading spinner when app is loading
   if (state.isLoading || isLoading) {
     return (
@@ -451,30 +418,6 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           <AnimatedCard animationType="slideUp" delay={400}>
             <MemoizedAttendanceHistory />
           </AnimatedCard>
-        )}
-
-
-
-        {/* Attendance History */}
-        {attendanceHistory.length > 0 && (
-          <Card style={[commonStyles.card, { backgroundColor: theme.colors.surface }]}>
-            <Card.Content>
-              <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
-                Lịch sử hôm nay
-              </Text>
-              {attendanceHistory.map((item, index) => (
-                <View key={index} style={styles.historyItem}>
-                  <Text style={styles.historyIcon}>{item.icon}</Text>
-                  <Text style={[styles.historyAction, { color: theme.colors.onSurface }]}>
-                    {item.action}
-                  </Text>
-                  <Text style={[styles.historyTime, { color: theme.colors.onSurfaceVariant }]}>
-                    {item.time}
-                  </Text>
-                </View>
-              ))}
-            </Card.Content>
-          </Card>
         )}
 
 
@@ -647,23 +590,6 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
     borderRadius: BORDER_RADIUS.sm,
     marginBottom: SPACING.sm,
-  },
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  historyIcon: {
-    fontSize: 16,
-    marginRight: 12,
-  },
-  historyAction: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  historyTime: {
-    fontSize: 12,
   },
   notesHeader: {
     flexDirection: 'row',

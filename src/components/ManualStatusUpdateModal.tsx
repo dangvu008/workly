@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Modal, Text, Button, useTheme, Divider, IconButton, List } from 'react-native-paper';
+import { Modal, Text, Button, useTheme, Divider, IconButton, List, Menu, TouchableRipple } from 'react-native-paper';
 import { format, parseISO, isFuture, isToday, isPast } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { DailyWorkStatus, Shift } from '../types';
@@ -32,117 +32,37 @@ export function ManualStatusUpdateModal({
 }: ManualStatusUpdateModalProps) {
   const theme = useTheme();
   const [timeEditVisible, setTimeEditVisible] = useState(false);
-
-  // Debug logs để kiểm tra
-  console.log('🔍 ManualStatusUpdateModal props:', { visible, date, hasCurrentStatus: !!currentStatus, hasShift: !!shift });
+  
+  // Dropdown states
+  const [attendanceMenuVisible, setAttendanceMenuVisible] = useState(false);
+  const [leaveMenuVisible, setLeaveMenuVisible] = useState(false);
+  const [selectedAttendanceAction, setSelectedAttendanceAction] = useState<string>('');
+  const [selectedLeaveStatus, setSelectedLeaveStatus] = useState<DailyWorkStatus['status'] | ''>('');
 
   if (!visible) {
-    console.log('❌ Modal not visible');
     return null;
   }
 
   if (!date) {
-    console.log('❌ No date provided, using today as fallback');
-    // Fallback to today's date if no date provided
-    const fallbackDate = format(new Date(), 'yyyy-MM-dd');
-    console.log('📅 Using fallback date:', fallbackDate);
-
-    // Don't return null, use fallback date instead
-    let dateObj: Date;
-    try {
-      dateObj = new Date();
-    } catch (error) {
-      console.log('❌ Error creating fallback date:', error);
-      return null;
-    }
-
-    const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
-    const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });
-
-    console.log('✅ Modal rendering with fallback date:', formattedDate);
-
-    // Continue with fallback date...
-    const isDatePastOrToday = true; // Today is always past or today
-    const hasManualStatus = false; // No status for fallback
-
-    // Use simplified rendering for fallback
-    return renderSimpleModal(dateObj, dayOfWeek, formattedDate, true, false);
+    return null;
   }
 
   let dateObj: Date;
   try {
     dateObj = parseISO(date);
     if (isNaN(dateObj.getTime())) {
-      console.log('❌ Invalid date:', date);
       return null;
     }
   } catch (error) {
-    console.log('❌ Error parsing date:', date, error);
     return null;
   }
 
   const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
   const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });
 
-  console.log('✅ Modal rendering for:', formattedDate);
-
   const isDateFuture = isFuture(dateObj) && !isToday(dateObj);
   const isDatePastOrToday = isPast(dateObj) || isToday(dateObj);
   const hasManualStatus = currentStatus?.isManualOverride;
-
-  // Helper function for simplified modal rendering
-  function renderSimpleModal(dateObj: Date, dayOfWeek: string, formattedDate: string, isDatePastOrToday: boolean, hasManualStatus: boolean) {
-    return (
-      <>
-        <Modal
-          visible={visible}
-          onDismiss={onDismiss}
-          contentContainerStyle={[
-            styles.container,
-            { backgroundColor: theme.colors.surface }
-          ]}
-        >
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.header}>
-              <View style={styles.headerContent}>
-                <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-                  Cập nhật trạng thái
-                </Text>
-                <IconButton
-                  icon="close"
-                  size={24}
-                  iconColor={theme.colors.onSurface}
-                  onPress={onDismiss}
-                />
-              </View>
-
-              <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
-                {dayOfWeek}, {formattedDate}
-              </Text>
-
-              {shift ? (
-                <Text style={[styles.shiftText, { color: theme.colors.primary }]}>
-                  Ca: {shift.name} ({shift.startTime} - {shift.endTime})
-                </Text>
-              ) : (
-                <Text style={[styles.shiftText, { color: theme.colors.error }]}>
-                  Chưa có ca làm việc được kích hoạt
-                </Text>
-              )}
-            </View>
-
-            <Button
-              mode="outlined"
-              onPress={onDismiss}
-              style={styles.cancelButton}
-            >
-              Đóng
-            </Button>
-          </ScrollView>
-        </Modal>
-      </>
-    );
-  }
 
   // Các trạng thái nghỉ có thể chọn
   const leaveStatuses: Array<{
@@ -190,10 +110,10 @@ export function ManualStatusUpdateModal({
 
       const statusInfo = WEEKLY_STATUS[status];
       const actionType = isDatePastOrToday ? 'cập nhật' : 'đăng ký';
-      const dateType = isToday(dateObj) ? 'hôm nay' :
-                      isPast(dateObj) ? `ngày ${format(dateObj, 'dd/MM')}` :
+      const dateType = isToday(dateObj) ? 'hôm nay' : 
+                      isPast(dateObj) ? `ngày ${format(dateObj, 'dd/MM')}` : 
                       `ngày ${format(dateObj, 'dd/MM')} (tương lai)`;
-
+      
       Alert.alert(
         '✅ Thành công',
         `Đã ${actionType} trạng thái ${dateType} thành "${statusInfo?.text || status}"`
@@ -207,7 +127,7 @@ export function ManualStatusUpdateModal({
     try {
       await onRecalculateFromLogs();
       onDismiss();
-
+      
       const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
       Alert.alert(
         '🔄 Thành công',
@@ -220,7 +140,7 @@ export function ManualStatusUpdateModal({
 
   const handleClearManual = async () => {
     const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
-
+    
     Alert.alert(
       '⚠️ Xác nhận xóa',
       `Bạn có chắc muốn xóa trạng thái thủ công và tính lại cho ${dateType}?\n\nHệ thống sẽ tự động tính toán lại dựa trên dữ liệu chấm công thực tế.`,
@@ -259,7 +179,54 @@ export function ManualStatusUpdateModal({
     }
   };
 
-  console.log('🎯 About to render Modal with visible:', visible);
+  // Dropdown handlers
+  const handleAttendanceActionSelect = (action: string) => {
+    setSelectedAttendanceAction(action);
+    setAttendanceMenuVisible(false);
+    
+    // Execute action immediately
+    switch (action) {
+      case 'recalculate':
+        handleRecalculate();
+        break;
+      case 'edit_time':
+        setTimeEditVisible(true);
+        break;
+      case 'clear_manual':
+        handleClearManual();
+        break;
+    }
+  };
+
+  const handleLeaveStatusSelect = (status: DailyWorkStatus['status']) => {
+    setSelectedLeaveStatus(status);
+    setLeaveMenuVisible(false);
+    
+    // Execute action immediately
+    handleStatusSelect(status);
+  };
+
+  // Attendance actions for dropdown
+  const attendanceActions = [
+    {
+      key: 'recalculate',
+      title: 'Tính theo chấm công',
+      description: 'Tự động tính dựa trên log check-in/check-out',
+      icon: 'calculator',
+    },
+    {
+      key: 'edit_time',
+      title: 'Chỉnh sửa giờ chấm công',
+      description: 'Nhập/sửa giờ vào và giờ ra thủ công',
+      icon: 'clock-edit',
+    },
+    ...(hasManualStatus ? [{
+      key: 'clear_manual',
+      title: 'Xóa trạng thái thủ công',
+      description: 'Xóa trạng thái nghỉ và tính lại từ chấm công',
+      icon: 'delete',
+    }] : []),
+  ];
 
   return (
     <>
@@ -295,16 +262,16 @@ export function ManualStatusUpdateModal({
               <Text style={[
                 styles.dateTypeText,
                 {
-                  color: isDatePastOrToday
+                  color: isDatePastOrToday 
                     ? (isToday(dateObj) ? theme.colors.primary : theme.colors.onSurfaceVariant)
                     : theme.colors.secondary,
-                  backgroundColor: isDatePastOrToday
+                  backgroundColor: isDatePastOrToday 
                     ? (isToday(dateObj) ? theme.colors.primaryContainer : theme.colors.surfaceVariant)
                     : theme.colors.secondaryContainer,
                 }
               ]}>
-                {isToday(dateObj) ? '📅 Hôm nay' :
-                 isPast(dateObj) ? '⏪ Quá khứ' :
+                {isToday(dateObj) ? '📅 Hôm nay' : 
+                 isPast(dateObj) ? '⏪ Quá khứ' : 
                  '⏩ Tương lai'}
               </Text>
             </View>
@@ -330,60 +297,129 @@ export function ManualStatusUpdateModal({
 
           <Divider style={{ marginVertical: 16 }} />
 
-          {/* Các lựa chọn cho ngày quá khứ/hiện tại */}
+          {/* Dropdown cho ngày quá khứ/hiện tại */}
           {isDatePastOrToday && (
             <>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
                 📊 Tính toán từ chấm công
               </Text>
 
-              <List.Item
-                title="Tính theo chấm công"
-                description="Tự động tính dựa trên log check-in/check-out"
-                left={(props) => <List.Icon {...props} icon="calculator" />}
-                onPress={handleRecalculate}
-                style={[styles.listItem, { backgroundColor: theme.colors.surfaceVariant }]}
-              />
+              <Text style={[styles.dropdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                Chọn hành động:
+              </Text>
 
-              <List.Item
-                title="Chỉnh sửa giờ chấm công"
-                description="Nhập/sửa giờ vào và giờ ra thủ công"
-                left={(props) => <List.Icon {...props} icon="clock-edit" />}
-                onPress={() => setTimeEditVisible(true)}
-                style={[styles.listItem, { backgroundColor: theme.colors.surfaceVariant }]}
-              />
-
-              {hasManualStatus && (
-                <List.Item
-                  title="Xóa trạng thái thủ công"
-                  description="Xóa trạng thái nghỉ và tính lại từ chấm công"
-                  left={(props) => <List.Icon {...props} icon="delete" />}
-                  onPress={handleClearManual}
-                  style={[styles.listItem, { backgroundColor: theme.colors.errorContainer }]}
-                  titleStyle={{ color: theme.colors.onErrorContainer }}
-                  descriptionStyle={{ color: theme.colors.onErrorContainer }}
-                />
-              )}
+              <Menu
+                visible={attendanceMenuVisible}
+                onDismiss={() => setAttendanceMenuVisible(false)}
+                anchor={
+                  <TouchableRipple
+                    onPress={() => setAttendanceMenuVisible(true)}
+                    style={[
+                      styles.dropdownButton,
+                      { 
+                        backgroundColor: theme.colors.surfaceVariant,
+                        borderColor: theme.colors.outline,
+                      }
+                    ]}
+                  >
+                    <View style={styles.dropdownContent}>
+                      <List.Icon icon="calculator" color={theme.colors.onSurfaceVariant} />
+                      <View style={styles.dropdownTextContainer}>
+                        <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
+                          {selectedAttendanceAction ? 
+                            attendanceActions.find(a => a.key === selectedAttendanceAction)?.title :
+                            'Chọn hành động...'
+                          }
+                        </Text>
+                      </View>
+                      <List.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />
+                    </View>
+                  </TouchableRipple>
+                }
+              >
+                {attendanceActions.map((action) => (
+                  <Menu.Item
+                    key={action.key}
+                    onPress={() => handleAttendanceActionSelect(action.key)}
+                    title={action.title}
+                    leadingIcon={action.icon}
+                    titleStyle={{ color: action.key === 'clear_manual' ? theme.colors.error : theme.colors.onSurface }}
+                  />
+                ))}
+              </Menu>
 
               <Divider style={{ marginVertical: 16 }} />
             </>
           )}
 
-          {/* Các trạng thái nghỉ */}
+          {/* Dropdown cho trạng thái nghỉ */}
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
             {isDatePastOrToday ? '🏖️ Cập nhật trạng thái nghỉ' : '📝 Đăng ký trạng thái nghỉ'}
           </Text>
 
-          {leaveStatuses.map((item) => (
-            <List.Item
-              key={item.status}
-              title={item.title}
-              description={item.description}
-              left={(props) => <List.Icon {...props} icon={item.icon} />}
-              onPress={() => handleStatusSelect(item.status)}
-              style={[styles.listItem, { backgroundColor: theme.colors.surfaceVariant }]}
-            />
-          ))}
+          <Text style={[styles.dropdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Chọn trạng thái mới:
+          </Text>
+
+          <Menu
+            visible={leaveMenuVisible}
+            onDismiss={() => setLeaveMenuVisible(false)}
+            anchor={
+              <TouchableRipple
+                onPress={() => setLeaveMenuVisible(true)}
+                style={[
+                  styles.dropdownButton,
+                  { 
+                    backgroundColor: theme.colors.surfaceVariant,
+                    borderColor: theme.colors.outline,
+                  }
+                ]}
+              >
+                <View style={styles.dropdownContent}>
+                  <List.Icon 
+                    icon={selectedLeaveStatus ? 
+                      leaveStatuses.find(s => s.status === selectedLeaveStatus)?.icon || 'calendar' :
+                      currentStatus?.status ?
+                        (leaveStatuses.find(s => s.status === currentStatus.status)?.icon || 'calendar') :
+                        'calendar'
+                    } 
+                    color={theme.colors.onSurfaceVariant} 
+                  />
+                  <View style={styles.dropdownTextContainer}>
+                    <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
+                      {selectedLeaveStatus ? 
+                        leaveStatuses.find(s => s.status === selectedLeaveStatus)?.title :
+                        currentStatus?.status ? 
+                          (WEEKLY_STATUS[currentStatus.status]?.text || 'Chọn trạng thái...') :
+                          'Chọn trạng thái...'
+                      }
+                    </Text>
+                    {(selectedLeaveStatus || currentStatus?.status) && (
+                      <Text style={[styles.dropdownDescription, { color: theme.colors.onSurfaceVariant }]}>
+                        {selectedLeaveStatus ? 
+                          leaveStatuses.find(s => s.status === selectedLeaveStatus)?.description :
+                          currentStatus?.status ?
+                            leaveStatuses.find(s => s.status === currentStatus.status)?.description || 'Trạng thái hiện tại' :
+                            ''
+                        }
+                      </Text>
+                    )}
+                  </View>
+                  <List.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />
+                </View>
+              </TouchableRipple>
+            }
+          >
+            {leaveStatuses.map((item) => (
+              <Menu.Item
+                key={item.status}
+                onPress={() => handleLeaveStatusSelect(item.status)}
+                title={item.title}
+                leadingIcon={item.icon}
+                titleStyle={{ color: theme.colors.onSurface }}
+              />
+            ))}
+          </Menu>
 
           {/* Nút hủy */}
           <Button
@@ -459,11 +495,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  listItem: {
-    borderRadius: 8,
-    marginBottom: 8,
-  },
   cancelButton: {
     marginTop: 16,
+  },
+  // Dropdown styles
+  dropdownLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  dropdownButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 12,
+    minHeight: 56,
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  dropdownTextContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  dropdownText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  dropdownDescription: {
+    fontSize: 12,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

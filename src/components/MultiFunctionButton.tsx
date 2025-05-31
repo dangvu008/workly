@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, Vibration, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert, Vibration } from 'react-native';
 import { Button, Text, IconButton, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
@@ -7,7 +7,7 @@ import { useApp } from '../contexts/AppContext';
 import { BUTTON_STATES } from '../constants';
 import { storageService } from '../services/storage';
 import { LoadingOverlay } from './LoadingOverlay';
-import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS, ANIMATIONS } from '../constants/themes';
+import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS } from '../constants/themes';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -143,7 +143,6 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       const shouldConfirm = await checkIfNeedsConfirmation();
 
       if (shouldConfirm) {
-        // Hiển thị dialog xác nhận
         showConfirmationDialog();
         return;
       }

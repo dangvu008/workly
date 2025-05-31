@@ -23,14 +23,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const [manualUpdateModalVisible, setManualUpdateModalVisible] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
-  // Debug state changes
-  React.useEffect(() => {
-    console.log('🔄 State changed:', {
-      selectedDate,
-      manualUpdateModalVisible,
-      hasActiveShift: !!state.activeShift
-    });
-  }, [selectedDate, manualUpdateModalVisible, state.activeShift]);
+
 
   // Get the current week (Monday to Sunday)
   const today = new Date();
@@ -73,30 +66,11 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleDayPress = React.useCallback((date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    console.log('📅 Day pressed:', dateString);
-    console.log('📅 Current state before update:', {
-      selectedDate,
-      manualUpdateModalVisible
-    });
 
-    // Use functional updates to ensure state is set correctly
-    setSelectedDate(prev => {
-      console.log('📅 Setting selectedDate from', prev, 'to', dateString);
-      return dateString;
-    });
-
-    setManualUpdateModalVisible(prev => {
-      console.log('📅 Setting manualUpdateModalVisible from', prev, 'to true');
-      return true;
-    });
-
+    setSelectedDate(dateString);
+    setManualUpdateModalVisible(true);
     onDayPress?.(dateString);
-
-    // Verify state after setting
-    setTimeout(() => {
-      console.log('📅 State after update - selectedDate should be:', dateString);
-    }, 100);
-  }, [selectedDate, manualUpdateModalVisible, onDayPress]);
+  }, [onDayPress]);
 
   const handleDayLongPress = (date: Date) => {
     // Allow manual status update for current day and past days, plus future days for planning
@@ -279,21 +253,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
             {weekDays.map((date, index) => renderDayItem(date, index))}
           </View>
 
-          {/* Debug button - only in dev */}
-          {__DEV__ && (
-            <Button
-              mode="outlined"
-              onPress={() => {
-                console.log('🧪 Force opening modal with today date');
-                const todayString = format(new Date(), 'yyyy-MM-dd');
-                setSelectedDate(todayString);
-                setManualUpdateModalVisible(true);
-              }}
-              style={{ marginBottom: 12 }}
-            >
-              🧪 Force Open Modal (Debug)
-            </Button>
-          )}
+
 
           <View style={styles.legend}>
             <Text style={[styles.legendTitle, { color: theme.colors.onSurface }]}>
@@ -339,18 +299,9 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       />
 
       {/* Manual Status Update Modal */}
-      {console.log('🔍 Rendering ManualStatusUpdateModal with:', {
-        visible: manualUpdateModalVisible,
-        date: selectedDate,
-        hasCurrentStatus: selectedDate ? !!state.weeklyStatus[selectedDate] : false,
-        hasShift: !!state.activeShift
-      })}
       <ManualStatusUpdateModal
         visible={manualUpdateModalVisible}
-        onDismiss={() => {
-          console.log('📅 Dismissing modal');
-          setManualUpdateModalVisible(false);
-        }}
+        onDismiss={() => setManualUpdateModalVisible(false)}
         date={selectedDate}
         currentStatus={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
         shift={state.activeShift}

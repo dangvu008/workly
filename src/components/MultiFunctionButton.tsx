@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, Vibration } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, Alert, Vibration, Animated } from 'react-native';
 import { Button, Text, IconButton, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
@@ -7,6 +7,7 @@ import { useApp } from '../contexts/AppContext';
 import { BUTTON_STATES } from '../constants';
 import { storageService } from '../services/storage';
 import { LoadingOverlay } from './LoadingOverlay';
+import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS, ANIMATIONS } from '../constants/themes';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -261,14 +262,14 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: SPACING.lg,
   },
   buttonContainer: {
     position: 'relative',
     alignItems: 'center',
   },
   gradient: {
-    borderRadius: 60,
+    borderRadius: SCREEN_DIMENSIONS.isSmallScreen ? 50 : 60,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: {
@@ -279,16 +280,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4.65,
   },
   button: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: SCREEN_DIMENSIONS.isSmallScreen ? 100 : 120,
+    height: SCREEN_DIMENSIONS.isSmallScreen ? 100 : 120,
+    borderRadius: SCREEN_DIMENSIONS.isSmallScreen ? 50 : 60,
     backgroundColor: 'transparent',
     elevation: 0,
   },
   buttonContent: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: SCREEN_DIMENSIONS.isSmallScreen ? 100 : 120,
+    height: SCREEN_DIMENSIONS.isSmallScreen ? 100 : 120,
+    borderRadius: SCREEN_DIMENSIONS.isSmallScreen ? 50 : 60,
   },
   buttonInner: {
     alignItems: 'center',
@@ -296,16 +297,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   buttonIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: SCREEN_DIMENSIONS.isSmallScreen ? 20 : 24,
+    marginBottom: SPACING.xs,
   },
   buttonLabel: {
-    fontSize: 12,
+    fontSize: SCREEN_DIMENSIONS.isSmallScreen ? 10 : 12,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   buttonText: {
-    fontSize: 12,
+    fontSize: SCREEN_DIMENSIONS.isSmallScreen ? 10 : 12,
     fontWeight: 'bold',
   },
   pressed: {
@@ -320,14 +321,15 @@ const styles = StyleSheet.create({
     right: -10,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     elevation: 4,
+    borderRadius: BORDER_RADIUS.round,
   },
   punchButton: {
-    marginTop: 12,
-    borderRadius: 20,
+    marginTop: SPACING.sm,
+    borderRadius: BORDER_RADIUS.lg,
   },
   punchButtonContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
 });
 

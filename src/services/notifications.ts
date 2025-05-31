@@ -3,55 +3,35 @@ import { AlarmData, Shift, Note } from '../types';
 import { NOTIFICATION_CATEGORIES } from '../constants';
 import { storageService } from './storage';
 
-// Dynamic import for expo-notifications to handle Expo Go compatibility
-let Notifications: any = null;
-let isRunningInExpoGo: any = null;
+// Import notifications directly for Expo SDK 53+
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
-// Initialize notifications with error handling
-const initializeNotifications = async () => {
-  try {
-    const expoNotifications = await import('expo-notifications');
-    const expo = await import('expo');
-
-    Notifications = expoNotifications;
-    isRunningInExpoGo = expo.isRunningInExpoGo;
-
-    // Configure notification behavior
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
-
-    return true;
-  } catch (error) {
-    console.warn('⚠️ Workly: Notifications không khả dụng trong môi trường này:', error.message);
-    return false;
-  }
+// Check if running in Expo Go
+const isRunningInExpoGo = () => {
+  return Constants.executionEnvironment === 'storeClient';
 };
+
+// Configure notification behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 class NotificationService {
   private isInitialized = false;
-  private isAvailable = false;
+  private isAvailable = true; // Assume available since we're importing directly
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      // Try to initialize notifications
-      this.isAvailable = await initializeNotifications();
-
-      if (!this.isAvailable) {
-        console.warn('⚠️ Workly: Notifications không khả dụng. Một số tính năng sẽ bị hạn chế.');
-        this.isInitialized = true;
-        return;
-      }
-
       // Check if running in Expo Go and warn about limitations
-      if (isRunningInExpoGo && isRunningInExpoGo() && Platform.OS === 'android') {
+      if (isRunningInExpoGo() && Platform.OS === 'android') {
         console.warn(
           '⚠️ Workly: Push notifications có thể không hoạt động đầy đủ trong Expo Go. ' +
           'Để có trải nghiệm tốt nhất, hãy sử dụng development build hoặc build production.'
@@ -113,7 +93,8 @@ class NotificationService {
       this.isInitialized = true;
     } catch (error) {
       console.error('Error initializing notifications:', error);
-      throw error;
+      this.isAvailable = false;
+      console.warn('⚠️ Workly: Notifications không khả dụng. Một số tính năng sẽ bị hạn chế.');
     }
   }
 
@@ -491,7 +472,7 @@ class NotificationService {
       };
     }
 
-    const isExpoGoRunning = isRunningInExpoGo && isRunningInExpoGo();
+    const isExpoGoRunning = isRunningInExpoGo();
     const platform = Platform.OS;
     const { status } = await Notifications.getPermissionsAsync();
     const hasPermission = status === 'granted';

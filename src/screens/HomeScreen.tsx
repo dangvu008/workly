@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, IconButton, useTheme, Button, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,7 +9,9 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
-import { commonStyles } from '../constants/themes';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { AnimatedCard } from '../components/AnimatedCard';
+import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
@@ -26,12 +28,21 @@ interface HomeScreenProps {
   navigation: HomeScreenNavigationProp;
 }
 
+// Memoized components để tránh re-render không cần thiết
+const MemoizedWeatherWidget = React.memo(WeatherWidget);
+const MemoizedWeeklyStatusGrid = React.memo(WeeklyStatusGrid);
+const MemoizedAttendanceHistory = React.memo(AttendanceHistory);
+
 export function HomeScreen({ navigation }: HomeScreenProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshingData, setIsRefreshingData] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Memoized responsive padding
+  const responsivePadding = useMemo(() => getResponsivePadding(), []);
 
   // Update time every minute - Optimized to reduce unnecessary re-renders
   useEffect(() => {
@@ -42,7 +53,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
     return () => clearInterval(timer);
   }, []);
 
-  const onRefresh = async () => {
+  // Optimized refresh function với useCallback
+  const onRefresh = useCallback(async () => {
     if (refreshing || isRefreshingData) return; // Prevent multiple simultaneous refreshes
 
     setRefreshing(true);
@@ -63,7 +75,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       setRefreshing(false);
       setIsRefreshingData(false);
     }
-  };
+  }, [refreshing, isRefreshingData, actions]);
 
   const getAttendanceHistory = () => {
     // Only show history if within active window
@@ -358,12 +370,11 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
   const attendanceHistory = getAttendanceHistory();
 
-  if (state.isLoading) {
+  // Show loading spinner when app is loading
+  if (state.isLoading || isLoading) {
     return (
       <SafeAreaView style={[commonStyles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={[commonStyles.centerContent, { flex: 1 }]}>
-          <Text>Đang tải...</Text>
-        </View>
+        <LoadingSpinner message="Đang tải dữ liệu..." />
       </SafeAreaView>
     );
   }
@@ -371,31 +382,38 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, { padding: responsivePadding }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={[commonStyles.header, styles.header]}>
-          <View>
-            <Text style={[styles.dateTime, { color: theme.colors.onBackground }]}>
-              {format(currentTime, 'EEEE, dd/MM', { locale: vi })}
-            </Text>
-            <Text style={[styles.time, { color: theme.colors.onBackground }]}>
-              {format(currentTime, 'HH:mm')}
-            </Text>
-          </View>
-        </View>
+        {/* Header với animation */}
+        <AnimatedCard animationType="fadeIn" delay={0}>
+          <Card.Content>
+            <View style={[commonStyles.header, styles.header]}>
+              <View>
+                <Text style={[styles.dateTime, { color: theme.colors.onSurface }]}>
+                  {format(currentTime, 'EEEE, dd/MM', { locale: vi })}
+                </Text>
+                <Text style={[styles.time, { color: theme.colors.primary }]}>
+                  {format(currentTime, 'HH:mm')}
+                </Text>
+              </View>
+            </View>
+          </Card.Content>
+        </AnimatedCard>
 
-        {/* Weather Widget */}
-        <WeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
+        {/* Weather Widget với animation */}
+        <AnimatedCard animationType="slideUp" delay={100}>
+          <MemoizedWeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
+        </AnimatedCard>
 
-        {/* Active Shift */}
-        <Card style={[commonStyles.card, { backgroundColor: theme.colors.surface }]}>
+        {/* Active Shift với animation */}
+        <AnimatedCard animationType="slideUp" delay={200} elevated>
           <Card.Content>
             <View style={styles.shiftHeader}>
-              <Text style={[styles.shiftTitle, { color: theme.colors.onSurface }]}>
+              <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 Ca làm việc hiện tại
               </Text>
               <IconButton
@@ -403,18 +421,19 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                 size={20}
                 iconColor={theme.colors.primary}
                 onPress={() => navigation.navigate('ShiftsTab')}
+                style={commonStyles.accessibleTouchTarget}
               />
             </View>
             <Text style={[styles.shiftName, { color: theme.colors.primary }]}>
               {state.activeShift?.name || 'Chưa chọn ca'}
             </Text>
             {state.activeShift && (
-              <Text style={[styles.shiftTime, { color: theme.colors.onSurface }]}>
+              <Text style={[commonStyles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
                 {state.activeShift.startTime} - {state.activeShift.endTime}
               </Text>
             )}
           </Card.Content>
-        </Card>
+        </AnimatedCard>
 
         {/* Multi-Function Button - Only show if within active window */}
         {state.timeDisplayInfo?.shouldShowButton && (
@@ -427,14 +446,16 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
         {/* Attendance History - Show below Multi-Function Button */}
         {state.timeDisplayInfo?.shouldShowButton && (
-          <AttendanceHistory />
+          <AnimatedCard animationType="slideUp" delay={400}>
+            <MemoizedAttendanceHistory />
+          </AnimatedCard>
         )}
 
         {/* Time Display Info for debugging */}
         {state.timeDisplayInfo && !state.timeDisplayInfo.shouldShowButton && (
-          <Card style={[commonStyles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <AnimatedCard animationType="fadeIn" delay={300}>
             <Card.Content>
-              <Text style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>
+              <Text style={[commonStyles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
                 {state.timeDisplayInfo.currentPhase === 'inactive' &&
                   `Nút sẽ hiện lại sau ${Math.floor(state.timeDisplayInfo.timeUntilNextReset / 60)}h ${state.timeDisplayInfo.timeUntilNextReset % 60}m`
                 }
@@ -443,14 +464,14 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                 }
               </Text>
             </Card.Content>
-          </Card>
+          </AnimatedCard>
         )}
 
         {/* Attendance History */}
         {attendanceHistory.length > 0 && (
           <Card style={[commonStyles.card, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 Lịch sử hôm nay
               </Text>
               {attendanceHistory.map((item, index) => (
@@ -468,17 +489,19 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card>
         )}
 
-        {/* Weekly Status Grid */}
-        <WeeklyStatusGrid onDayPress={(date) => {
-          // Could navigate to day detail or show more info
-          console.log('Day pressed:', date);
-        }} />
+        {/* Weekly Status Grid với animation */}
+        <AnimatedCard animationType="slideUp" delay={500} elevated>
+          <MemoizedWeeklyStatusGrid onDayPress={(date) => {
+            // Could navigate to day detail or show more info
+            console.log('Day pressed:', date);
+          }} />
+        </AnimatedCard>
 
-        {/* Notes Section */}
-        <Card style={[commonStyles.card, { backgroundColor: theme.colors.surface }]}>
+        {/* Notes Section với animation */}
+        <AnimatedCard animationType="slideUp" delay={600} elevated>
           <Card.Content>
             <View style={styles.notesHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 Ghi Chú Sắp Tới
               </Text>
               <IconButton
@@ -486,13 +509,14 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                 size={20}
                 iconColor={theme.colors.primary}
                 onPress={() => navigation.navigate('NotesTab')}
+                style={commonStyles.accessibleTouchTarget}
               />
             </View>
 
             {/* Conflict Warning */}
             {getConflictWarning && (
               <View style={[styles.conflictWarning, { backgroundColor: theme.colors.errorContainer }]}>
-                <Text style={[styles.conflictWarningText, { color: theme.colors.onErrorContainer }]}>
+                <Text style={[commonStyles.bodyText, { color: theme.colors.onErrorContainer }]}>
                   ⚠️ {getConflictWarning}
                 </Text>
               </View>
@@ -594,7 +618,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               Thêm Ghi Chú
             </Button>
           </Card.Content>
-        </Card>
+        </AnimatedCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -606,18 +630,16 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    padding: 16,
   },
   header: {
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   dateTime: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...TYPOGRAPHY.titleMedium,
     textTransform: 'capitalize',
   },
   time: {
-    fontSize: 24,
+    ...TYPOGRAPHY.headlineSmall,
     fontWeight: 'bold',
   },
   shiftHeader: {
@@ -625,23 +647,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  shiftTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
   shiftName: {
-    fontSize: 18,
+    ...TYPOGRAPHY.titleLarge,
     fontWeight: 'bold',
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
-  shiftTime: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
+  conflictWarning: {
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    marginBottom: SPACING.sm,
   },
   historyItem: {
     flexDirection: 'row',
@@ -703,20 +717,6 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   addNoteButton: {
-    marginTop: 12,
-  },
-  conflictWarning: {
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 12,
-  },
-  conflictWarningText: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  infoText: {
-    fontSize: 14,
-    textAlign: 'center',
+    marginTop: SPACING.sm,
   },
 });

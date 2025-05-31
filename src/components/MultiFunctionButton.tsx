@@ -62,11 +62,66 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       onPress?.();
     } catch (error) {
       console.error('Error in button press:', error);
-      Alert.alert(
-        'Lỗi',
-        'Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại.',
-        [{ text: 'OK' }]
-      );
+
+      // Kiểm tra nếu là RapidPressDetectedException
+      if (error instanceof Error && error.name === 'RapidPressDetectedException') {
+        const rapidError = error as any; // Type assertion để truy cập properties
+        const durationText = rapidError.actualDurationSeconds < 60
+          ? `${Math.round(rapidError.actualDurationSeconds)} giây`
+          : `${Math.round(rapidError.actualDurationSeconds / 60 * 10) / 10} phút`;
+
+        Alert.alert(
+          '⚡ Phát hiện "Bấm Nhanh"',
+          `Bạn đã thực hiện check-in và check-out trong thời gian rất ngắn (${durationText}).\n\n` +
+          'Bạn có muốn xác nhận và tính đủ công theo lịch trình ca không?',
+          [
+            {
+              text: 'Hủy',
+              style: 'cancel',
+              onPress: () => {
+                console.log('❌ Người dùng hủy xác nhận bấm nhanh');
+              }
+            },
+            {
+              text: 'Xác nhận',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  await actions.handleRapidPressConfirmed(
+                    rapidError.checkInTime,
+                    rapidError.checkOutTime
+                  );
+
+                  // Refresh logs status after confirmation
+                  await checkTodayLogs();
+
+                  Alert.alert(
+                    'Thành công',
+                    'Đã xác nhận và tính đủ công theo lịch trình ca.',
+                    [{ text: 'OK' }]
+                  );
+
+                  onPress?.();
+                } catch (confirmError) {
+                  console.error('Error confirming rapid press:', confirmError);
+                  Alert.alert(
+                    'Lỗi',
+                    'Không thể xác nhận. Vui lòng thử lại.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        // Lỗi khác
+        Alert.alert(
+          'Lỗi',
+          'Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsPressed(false);
     }

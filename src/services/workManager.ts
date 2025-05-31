@@ -7,7 +7,8 @@ import {
   Shift,
   ButtonState,
   UserSettings,
-  PublicHoliday
+  PublicHoliday,
+  RapidPressDetectedException
 } from '../types';
 import { TIME_CONSTANTS } from '../constants';
 import { storageService } from './storage';
@@ -438,17 +439,19 @@ class WorkManager {
         const checkInTime = parseISO(checkInLog.time);
         const checkOutTime = parseISO(checkOutLog.time);
 
-        // Logic "Bấm Nhanh" (Rapid Press Detection)
+        // Logic "Bấm Nhanh" (Rapid Press Detection) - Yêu cầu xác nhận từ người dùng
         const actualWorkDurationSeconds = (checkOutTime.getTime() - checkInTime.getTime()) / 1000;
         const rapidThresholdSeconds = settings.rapidPressThresholdSeconds || 60;
         const isRapidPress = actualWorkDurationSeconds < rapidThresholdSeconds;
 
         if (isRapidPress) {
-          // Xác định là "Bấm Nhanh" - Ghi nhận như một ngày làm việc đầy đủ
-          status = 'DU_CONG';
-          vaoLogTime = checkInLog.time;
-          raLogTime = checkOutLog.time;
-          console.log(`⚡ Phát hiện "Bấm Nhanh": ${actualWorkDurationSeconds}s < ${rapidThresholdSeconds}s - Ghi nhận DU_CONG`);
+          // Throw exception để yêu cầu xác nhận từ người dùng
+          throw new RapidPressDetectedException(
+            actualWorkDurationSeconds,
+            rapidThresholdSeconds,
+            checkInLog.time,
+            checkOutLog.time
+          );
         } else {
           // Logic bình thường - Kiểm tra đi muộn/về sớm
           const lateThreshold = settings.lateThresholdMinutes || 15;
@@ -775,6 +778,75 @@ class WorkManager {
       }
     } catch (error) {
       console.error('Error canceling related notifications:', error);
+    }
+  }
+
+  // Xử lý khi người dùng xác nhận "bấm nhanh" - tính đủ công theo lịch trình
+  async calculateDailyWorkStatusWithRapidPressConfirmed(
+    date: string,
+    logs: AttendanceLog[],
+    shift: Shift,
+    checkInTime: string,
+    checkOutTime: string
+  ): Promise<DailyWorkStatusNew> {
+    try {
+      const workDate = parseISO(date);
+      const settings = await storageService.getUserSettings();
+
+      // A. Xây dựng Timestamp Chuẩn
+      const timestamps = timeSyncService.buildScheduledTimestamps(shift, workDate);
+      const {
+        scheduledStartTimeFull,
+        scheduledOfficeEndTimeFull,
+        scheduledEndTimeFull,
+      } = timestamps;
+
+      // B. Khi người dùng xác nhận "bấm nhanh" - luôn tính DU_CONG theo lịch trình
+      const status: DailyWorkStatusNew['status'] = 'DU_CONG';
+      const vaoLogTime = checkInTime;
+      const raLogTime = checkOutTime;
+
+      // C. Tính giờ công theo lịch trình ca cố định (như chế độ Simple)
+      const standardMinutes = Math.max(0,
+        (scheduledOfficeEndTimeFull.getTime() - scheduledStartTimeFull.getTime()) / (1000 * 60) - shift.breakMinutes
+      );
+      const standardHours = standardMinutes / 60;
+
+      // Overtime hours (từ office end đến shift end)
+      const otMinutes = Math.max(0,
+        (scheduledEndTimeFull.getTime() - scheduledOfficeEndTimeFull.getTime()) / (1000 * 60)
+      );
+      const otHours = otMinutes / 60;
+
+      const totalHours = standardHours + otHours;
+
+      // Phân loại Giờ Đặc biệt theo Lịch trình
+      let sundayHours = 0;
+      if (workDate.getDay() === 0) {
+        sundayHours = totalHours;
+      }
+
+      const nightHours = this.calculateNightHoursNew(scheduledStartTimeFull, scheduledEndTimeFull, workDate);
+      const isHolidayWork = await this.isHolidayDate(workDate);
+
+      console.log(`✅ Người dùng xác nhận "Bấm Nhanh" - Tính DU_CONG theo lịch trình: ${standardHours}h + ${otHours}h OT`);
+
+      return {
+        date,
+        status,
+        vaoLogTime,
+        raLogTime,
+        standardHours: Math.round(standardHours * 100) / 100,
+        otHours: Math.round(otHours * 100) / 100,
+        totalHours: Math.round(totalHours * 100) / 100,
+        sundayHours: Math.round(sundayHours * 100) / 100,
+        nightHours: Math.round(nightHours * 100) / 100,
+        isHolidayWork,
+        notes: 'Xác nhận bấm nhanh - Tính theo lịch trình ca',
+      };
+    } catch (error) {
+      console.error('Error calculating work status with rapid press confirmed:', error);
+      throw error;
     }
   }
 

@@ -1,23 +1,31 @@
-# Logic "Bấm Nhanh" (Rapid Press) - Workly App
+# Logic "Bấm Nhanh" (Rapid Press) với Confirmation Dialog - Workly App
 
 ## Tổng quan
 
-Logic "Bấm Nhanh" được thiết kế để xử lý trường hợp người dùng ở chế độ Full thực hiện toàn bộ chuỗi hành động (Đi làm → Check-in → Check-out → Hoàn tất) trong một khoảng thời gian rất ngắn. Điều này thường xảy ra khi:
+Logic "Bấm Nhanh" được thiết kế để xử lý trường hợp người dùng ở chế độ Full thực hiện toàn bộ chuỗi hành động (Đi làm → Check-in → Check-out → Hoàn tất) trong một khoảng thời gian rất ngắn. Thay vì tự động xử lý, hệ thống sẽ **hỏi xác nhận từ người dùng**.
 
+Điều này thường xảy ra khi:
 - Người dùng muốn "xác nhận nhanh cho có"
 - Kiểm tra hoạt động của hệ thống
 - Thực hiện demo hoặc test
 
 ## Cách thức hoạt động
 
-### 1. Điều kiện kích hoạt
+### 1. Điều kiện phát hiện
 
-Logic "Bấm Nhanh" được kích hoạt khi:
+Logic "Bấm Nhanh" được phát hiện khi:
 - Có cả log `check_in` và `check_out` trong cùng một ngày
 - Khoảng thời gian giữa `check_in` đầu tiên và `check_out` cuối cùng < `rapidPressThresholdSeconds`
 - Không có log `complete` (vì complete có ưu tiên cao hơn)
 
-### 2. Threshold mặc định
+### 2. Xử lý phát hiện
+
+Khi phát hiện "Bấm Nhanh", hệ thống sẽ:
+1. **Throw `RapidPressDetectedException`** thay vì tự động xử lý
+2. **Hiển thị dialog xác nhận** cho người dùng
+3. **Chờ phản hồi** từ người dùng
+
+### 3. Threshold mặc định
 
 ```typescript
 rapidPressThresholdSeconds: 60 // Mặc định 60 giây
@@ -25,20 +33,31 @@ rapidPressThresholdSeconds: 60 // Mặc định 60 giây
 
 Giá trị này có thể được cấu hình trong UserSettings.
 
-### 3. Logic xử lý
+### 4. Dialog xác nhận
 
-Khi phát hiện "Bấm Nhanh":
+Khi phát hiện "Bấm Nhanh", hệ thống hiển thị dialog:
 
-#### Status
-- Luôn được đặt thành `DU_CONG` (Đủ công)
+```
+⚡ Phát hiện "Bấm Nhanh"
 
-#### Thời gian
-- `vaoLogTime`: Thời gian thực tế của log check-in
-- `raLogTime`: Thời gian thực tế của log check-out
-- Thời gian thực tế được lưu lại để tham khảo
+Bạn đã thực hiện check-in và check-out trong thời gian rất ngắn (30 giây).
 
-#### Tính giờ công
-Giờ công được tính **theo lịch trình ca cố định**, giống như chế độ Simple:
+Bạn có muốn xác nhận và tính đủ công theo lịch trình ca không?
+
+[Hủy]  [Xác nhận]
+```
+
+### 5. Xử lý phản hồi người dùng
+
+#### Nếu người dùng chọn "Hủy":
+- Không làm gì cả
+- Logs vẫn được giữ nguyên
+- Không tính toán work status
+
+#### Nếu người dùng chọn "Xác nhận":
+- **Status**: Luôn được đặt thành `DU_CONG` (Đủ công)
+- **Thời gian**: Lưu thời gian thực tế của check-in/check-out
+- **Tính giờ công**: Theo lịch trình ca cố định (như chế độ Simple)
 
 ```typescript
 // Standard hours

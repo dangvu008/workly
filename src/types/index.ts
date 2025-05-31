@@ -152,6 +152,19 @@ export type ButtonState =
   | 'complete'
   | 'completed_day';
 
+// Exception for rapid press detection - yêu cầu xác nhận từ người dùng
+export class RapidPressDetectedException extends Error {
+  constructor(
+    public actualDurationSeconds: number,
+    public thresholdSeconds: number,
+    public checkInTime: string,
+    public checkOutTime: string
+  ) {
+    super(`Rapid press detected: ${actualDurationSeconds}s < ${thresholdSeconds}s`);
+    this.name = 'RapidPressDetectedException';
+  }
+}
+
 // Weekly status icons
 export type WeeklyStatusIcon =
   | '✅' // completed

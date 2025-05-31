@@ -1,11 +1,11 @@
 /**
- * Test cases cho logic "Bấm Nhanh" (Rapid Press)
- * Kiểm tra việc phát hiện và xử lý khi người dùng bấm liên tục các nút trong chế độ Full
+ * Test cases cho logic "Bấm Nhanh" (Rapid Press) với Confirmation Dialog
+ * Kiểm tra việc phát hiện và yêu cầu xác nhận từ người dùng khi bấm liên tục các nút trong chế độ Full
  */
 
 import { workManager } from '../services/workManager';
 import { storageService } from '../services/storage';
-import { AttendanceLog, Shift, UserSettings } from '../types';
+import { AttendanceLog, Shift, UserSettings, RapidPressDetectedException } from '../types';
 import { parseISO, format } from 'date-fns';
 
 // Mock data
@@ -46,7 +46,7 @@ const mockSettings: UserSettings = {
   notesShowConflictWarning: true,
 };
 
-describe('Logic Bấm Nhanh (Rapid Press)', () => {
+describe('Logic Bấm Nhanh (Rapid Press) với Confirmation', () => {
   beforeEach(() => {
     // Mock storage service
     jest.spyOn(storageService, 'getUserSettings').mockResolvedValue(mockSettings);
@@ -57,10 +57,10 @@ describe('Logic Bấm Nhanh (Rapid Press)', () => {
     jest.restoreAllMocks();
   });
 
-  test('Phát hiện "Bấm Nhanh" khi check-in và check-out trong vòng 30 giây', async () => {
+  test('Throw RapidPressDetectedException khi check-in và check-out trong vòng 30 giây', async () => {
     const testDate = '2025-01-15';
     const baseTime = parseISO(`${testDate}T08:00:00.000Z`);
-    
+
     // Tạo logs với khoảng cách 30 giây
     const logs: AttendanceLog[] = [
       {
@@ -77,18 +77,25 @@ describe('Logic Bấm Nhanh (Rapid Press)', () => {
       },
     ];
 
-    const result = await workManager.calculateDailyWorkStatusNew(testDate, logs, mockShift);
+    // Expect exception to be thrown
+    await expect(
+      workManager.calculateDailyWorkStatusNew(testDate, logs, mockShift)
+    ).rejects.toThrow(RapidPressDetectedException);
 
-    expect(result.status).toBe('DU_CONG');
-    expect(result.standardHours).toBe(8); // 8 giờ theo lịch trình ca (9h - 1h break)
-    expect(result.otHours).toBe(0);
-    expect(result.totalHours).toBe(8);
+    try {
+      await workManager.calculateDailyWorkStatusNew(testDate, logs, mockShift);
+    } catch (error) {
+      expect(error).toBeInstanceOf(RapidPressDetectedException);
+      expect((error as RapidPressDetectedException).actualDurationSeconds).toBe(30);
+      expect((error as RapidPressDetectedException).thresholdSeconds).toBe(60);
+    }
   });
 
-  test('Phát hiện "Bấm Nhanh" khi check-in và check-out trong vòng 45 giây', async () => {
+  test('Xử lý xác nhận "Bấm Nhanh" - tính đủ công theo lịch trình', async () => {
     const testDate = '2025-01-15';
     const baseTime = parseISO(`${testDate}T08:00:00.000Z`);
-    
+    const checkOutTime = new Date(baseTime.getTime() + 45 * 1000).toISOString();
+
     // Tạo logs với khoảng cách 45 giây
     const logs: AttendanceLog[] = [
       {
@@ -97,21 +104,32 @@ describe('Logic Bấm Nhanh (Rapid Press)', () => {
       },
       {
         type: 'check_out',
-        time: new Date(baseTime.getTime() + 45 * 1000).toISOString(), // +45 giây
+        time: checkOutTime,
       },
     ];
 
-    const result = await workManager.calculateDailyWorkStatusNew(testDate, logs, mockShift);
+    // Test method xử lý confirmation
+    const result = await workManager.calculateDailyWorkStatusWithRapidPressConfirmed(
+      testDate,
+      logs,
+      mockShift,
+      baseTime.toISOString(),
+      checkOutTime
+    );
 
     expect(result.status).toBe('DU_CONG');
+    expect(result.standardHours).toBe(8); // 8 giờ theo lịch trình ca (9h - 1h break)
+    expect(result.otHours).toBe(0);
+    expect(result.totalHours).toBe(8);
     expect(result.vaoLogTime).toBe(baseTime.toISOString());
-    expect(result.raLogTime).toBe(new Date(baseTime.getTime() + 45 * 1000).toISOString());
+    expect(result.raLogTime).toBe(checkOutTime);
+    expect(result.notes).toBe('Xác nhận bấm nhanh - Tính theo lịch trình ca');
   });
 
   test('KHÔNG phát hiện "Bấm Nhanh" khi check-in và check-out cách nhau 90 giây', async () => {
     const testDate = '2025-01-15';
     const baseTime = parseISO(`${testDate}T08:00:00.000Z`);
-    
+
     // Tạo logs với khoảng cách 90 giây (vượt threshold 60s)
     const logs: AttendanceLog[] = [
       {
@@ -139,7 +157,7 @@ describe('Logic Bấm Nhanh (Rapid Press)', () => {
 
     const testDate = '2025-01-15';
     const baseTime = parseISO(`${testDate}T08:00:00.000Z`);
-    
+
     // Tạo logs với khoảng cách 90 giây (dưới threshold 120s)
     const logs: AttendanceLog[] = [
       {
@@ -161,7 +179,7 @@ describe('Logic Bấm Nhanh (Rapid Press)', () => {
   test('Trường hợp có complete log - không áp dụng logic "Bấm Nhanh"', async () => {
     const testDate = '2025-01-15';
     const baseTime = parseISO(`${testDate}T08:00:00.000Z`);
-    
+
     // Tạo logs với complete log
     const logs: AttendanceLog[] = [
       {
@@ -188,7 +206,7 @@ describe('Logic Bấm Nhanh (Rapid Press)', () => {
   test('Trường hợp chỉ có check-in - không áp dụng logic "Bấm Nhanh"', async () => {
     const testDate = '2025-01-15';
     const baseTime = parseISO(`${testDate}T08:00:00.000Z`);
-    
+
     // Chỉ có check-in log
     const logs: AttendanceLog[] = [
       {

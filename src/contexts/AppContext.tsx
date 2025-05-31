@@ -168,6 +168,7 @@ interface AppContextType {
     updateNote: (noteId: string, updates: Partial<Note>) => Promise<void>;
     deleteNote: (noteId: string) => Promise<void>;
     handleButtonPress: () => Promise<void>;
+    handleRapidPressConfirmed: (checkInTime: string, checkOutTime: string) => Promise<void>;
     resetDailyStatus: () => Promise<void>;
     refreshWeatherData: () => Promise<void>;
     refreshButtonState: () => Promise<void>;
@@ -424,6 +425,42 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  // Handle rapid press confirmation - tính đủ công theo lịch trình
+  const handleRapidPressConfirmed = async (checkInTime: string, checkOutTime: string) => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const logs = await storageService.getAttendanceLogsForDate(today);
+
+      if (!state.activeShift) {
+        throw new Error('Không có ca làm việc đang hoạt động');
+      }
+
+      // Tính toán work status với xác nhận "bấm nhanh"
+      const status = await workManager.calculateDailyWorkStatusWithRapidPressConfirmed(
+        today,
+        logs,
+        state.activeShift,
+        checkInTime,
+        checkOutTime
+      );
+
+      // Lưu kết quả
+      await storageService.setDailyWorkStatusNewForDate(today, status);
+
+      // Refresh state
+      await refreshButtonState();
+      await refreshWeeklyStatus();
+
+      const todayStatus = await storageService.getDailyWorkStatusForDate(today);
+      dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
+
+      console.log('✅ Đã xử lý xác nhận bấm nhanh thành công');
+    } catch (error) {
+      console.error('Error handling rapid press confirmation:', error);
+      throw error;
+    }
+  };
+
   // Reset daily status
   const resetDailyStatus = async () => {
     try {
@@ -530,6 +567,7 @@ export function AppProvider({ children }: AppProviderProps) {
       updateNote,
       deleteNote,
       handleButtonPress,
+      handleRapidPressConfirmed,
       resetDailyStatus,
       refreshWeatherData,
       refreshButtonState,

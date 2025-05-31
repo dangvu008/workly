@@ -45,7 +45,23 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-location"
-    ]
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2196F3",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#2196F3",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "Workly"
+    }
   }
 }

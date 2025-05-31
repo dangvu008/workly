@@ -18,6 +18,7 @@ import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { NotificationStatusCard } from '../components/NotificationStatusCard';
 
 type SettingsScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'SettingsTab'>,
@@ -33,6 +34,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const { state, actions } = useApp();
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const [modeMenuVisible, setModeMenuVisible] = useState(false);
+  const [showNotificationStatus, setShowNotificationStatus] = useState(true);
 
   // Status messages
   const [statusMessage, setStatusMessage] = useState<{
@@ -161,6 +163,14 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       </View>
 
       <ScrollView style={styles.scrollView}>
+        {/* Notification Status */}
+        {showNotificationStatus && (
+          <NotificationStatusCard
+            onDismiss={() => setShowNotificationStatus(false)}
+            showTestButton={true}
+          />
+        )}
+
         {/* General Settings */}
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>

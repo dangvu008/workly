@@ -1,0 +1,4 @@
+# Placeholder for notification icon
+# This should be a 96x96px white icon on transparent background
+# For now, we'll use the same as the app icon
+# In production, create a proper notification icon

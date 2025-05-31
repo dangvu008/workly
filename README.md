@@ -43,7 +43,7 @@ Workly là một ứng dụng React Native được thiết kế để giúp ng�
 ## 🚀 Cài Đặt và Chạy
 
 ### Yêu Cầu Hệ Thống
-- Node.js 18+ 
+- Node.js 18+
 - npm hoặc yarn
 - Expo CLI
 - Android Studio (cho Android) hoặc Xcode (cho iOS)
@@ -80,6 +80,16 @@ npm run web
 - **Vị trí**: Xác định vị trí nhà/công ty cho cảnh báo thời tiết
 - **Thông báo**: Gửi nhắc nhở và báo thức
 - **Rung**: Phản hồi haptic khi bấm nút
+
+### ⚠️ Lưu Ý Về Notifications
+Từ Expo SDK 53+, **push notifications** đã bị loại bỏ khỏi Expo Go trên Android:
+
+- ✅ **Local notifications** hoạt động bình thường trong Expo Go
+- ❌ **Push notifications** cần development build trên Android
+- ✅ **iOS Expo Go** vẫn hỗ trợ đầy đủ
+
+**Khuyến nghị**: Sử dụng development build để có đầy đủ tính năng.
+Xem [NOTIFICATION-SETUP-GUIDE.md](./NOTIFICATION-SETUP-GUIDE.md) để biết chi tiết.
 
 ## 📱 Hướng Dẫn Sử Dụng
 

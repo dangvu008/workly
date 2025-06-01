@@ -91,40 +91,69 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   // Handlers cho ManualStatusUpdateModal
   const handleStatusUpdate = async (status: DailyWorkStatus['status']) => {
     try {
+      console.log('🔘 WeeklyStatusGrid: Updating status to:', status, 'for date:', selectedDate);
       await workManager.setManualWorkStatus(selectedDate, status);
       await actions.refreshWeeklyStatus();
+
+      // Show success message
+      const statusText = WEEKLY_STATUS[status]?.text || status;
+      const dateType = selectedDate === format(new Date(), 'yyyy-MM-dd') ? 'hôm nay' :
+                      `ngày ${format(new Date(selectedDate), 'dd/MM')}`;
+      Alert.alert('✅ Thành công', `Đã cập nhật trạng thái ${dateType} thành "${statusText}"`);
     } catch (error) {
       console.error('Error updating status:', error);
+      Alert.alert('❌ Lỗi', 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
       throw error;
     }
   };
 
   const handleTimeEdit = async (checkInTime: string, checkOutTime: string) => {
     try {
+      console.log('🔘 WeeklyStatusGrid: Editing time:', { checkInTime, checkOutTime, selectedDate });
       await workManager.updateAttendanceTime(selectedDate, checkInTime, checkOutTime);
       await actions.refreshWeeklyStatus();
+
+      // Show success message
+      const dateType = selectedDate === format(new Date(), 'yyyy-MM-dd') ? 'hôm nay' :
+                      `ngày ${format(new Date(selectedDate), 'dd/MM')}`;
+      Alert.alert('🕐 Thành công', `Đã cập nhật giờ chấm công cho ${dateType}\nVào: ${checkInTime}\nRa: ${checkOutTime}`);
     } catch (error) {
       console.error('Error updating time:', error);
+      Alert.alert('❌ Lỗi', 'Không thể cập nhật giờ chấm công. Vui lòng thử lại.');
       throw error;
     }
   };
 
   const handleRecalculateFromLogs = async () => {
     try {
+      console.log('🔘 WeeklyStatusGrid: Recalculating from logs for date:', selectedDate);
       await workManager.recalculateFromAttendanceLogs(selectedDate);
       await actions.refreshWeeklyStatus();
+
+      // Show success message
+      const dateType = selectedDate === format(new Date(), 'yyyy-MM-dd') ? 'hôm nay' :
+                      `ngày ${format(new Date(selectedDate), 'dd/MM')}`;
+      Alert.alert('🔄 Thành công', `Đã tính lại trạng thái cho ${dateType} dựa trên dữ liệu chấm công thực tế`);
     } catch (error) {
       console.error('Error recalculating from logs:', error);
+      Alert.alert('❌ Lỗi', 'Không thể tính lại trạng thái. Vui lòng thử lại.');
       throw error;
     }
   };
 
   const handleClearManualStatus = async () => {
     try {
+      console.log('🔘 WeeklyStatusGrid: Clearing manual status for date:', selectedDate);
       await workManager.clearManualStatusAndRecalculate(selectedDate);
       await actions.refreshWeeklyStatus();
+
+      // Show success message
+      const dateType = selectedDate === format(new Date(), 'yyyy-MM-dd') ? 'hôm nay' :
+                      `ngày ${format(new Date(selectedDate), 'dd/MM')}`;
+      Alert.alert('🗑️ Thành công', `Đã xóa trạng thái thủ công cho ${dateType} và tính lại từ chấm công`);
     } catch (error) {
       console.error('Error clearing manual status:', error);
+      Alert.alert('❌ Lỗi', 'Không thể xóa trạng thái. Vui lòng thử lại.');
       throw error;
     }
   };
@@ -164,7 +193,8 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const renderDayItem = (date: Date, index: number) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    const dayName = DAYS_OF_WEEK[state.settings?.language || 'vi'][index];
+    const language = (state.settings?.language || 'vi') as keyof typeof DAYS_OF_WEEK;
+    const dayName = DAYS_OF_WEEK[language][index];
     const dayNumber = format(date, 'd');
     const statusIcon = getStatusIcon(date);
     const statusColor = getStatusColor(date);

@@ -66,9 +66,14 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const handleDayPress = React.useCallback((date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
 
-    setSelectedDate(dateString);
-    setManualUpdateModalVisible(true);
-    onDayPress?.(dateString);
+    // ✅ Validation date format trước khi set
+    if (dateString && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      setSelectedDate(dateString);
+      setManualUpdateModalVisible(true);
+      onDayPress?.(dateString);
+    } else {
+      console.error('WeeklyStatusGrid: Invalid date format:', dateString);
+    }
   }, [onDayPress]);
 
   const handleDayLongPress = (date: Date) => {
@@ -76,14 +81,38 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
     const canUpdate = isToday(date) || isPast(date) || isFuture(date);
     if (canUpdate) {
       const dateString = format(date, 'yyyy-MM-dd');
-      setMenuVisible(dateString);
+
+      // ✅ Validation date format trước khi set
+      if (dateString && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        setMenuVisible(dateString);
+      } else {
+        console.error('WeeklyStatusGrid: Invalid date format in long press:', dateString);
+      }
     }
   };
 
-  // Handlers cho ManualStatusUpdateModal
-  const handleStatusUpdate = async (status: DailyWorkStatus['status']) => {
+  // Handlers cho ManualStatusUpdateModal với interface mới
+  const handleStatusUpdate = async (data: {
+    selectedShiftId: string;
+    status: DailyWorkStatus['status'];
+    checkInTime?: string;
+    checkOutTime?: string;
+  }) => {
     try {
-      await workManager.setManualWorkStatus(selectedDate, status);
+      const { selectedShiftId, status, checkInTime, checkOutTime } = data;
+
+      // Xử lý các trường hợp đặc biệt
+      if (status === 'TINH_THEO_CHAM_CONG') {
+        await workManager.recalculateFromAttendanceLogs(selectedDate);
+      } else if (checkInTime && checkOutTime) {
+        // Cập nhật giờ chấm công trước, sau đó set status
+        await workManager.updateAttendanceTime(selectedDate, checkInTime, checkOutTime);
+        await workManager.setManualWorkStatus(selectedDate, status, selectedShiftId);
+      } else {
+        // Chỉ cập nhật status
+        await workManager.setManualWorkStatus(selectedDate, status, selectedShiftId);
+      }
+
       await actions.refreshWeeklyStatus();
 
       // Show success message
@@ -132,7 +161,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleClearManualStatus = async () => {
     try {
-      await workManager.clearManualStatusAndRecalculate(selectedDate);
+      await workManager.clearManualStatus(selectedDate);
       await actions.refreshWeeklyStatus();
 
       // Show success message
@@ -314,18 +343,24 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
         </Card.Content>
       </Card>
 
-      {/* Manual Status Update Modal */}
-      <ManualStatusUpdateModal
-        visible={manualUpdateModalVisible}
-        onDismiss={() => setManualUpdateModalVisible(false)}
-        date={selectedDate}
-        currentStatus={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
-        shift={state.activeShift}
-        onStatusUpdate={handleStatusUpdate}
-        onTimeEdit={handleTimeEdit}
-        onRecalculateFromLogs={handleRecalculateFromLogs}
-        onClearManualStatus={handleClearManualStatus}
-      />
+      {/* Manual Status Update Modal - chỉ hiển thị khi có selectedDate hợp lệ và modal visible */}
+      {selectedDate && manualUpdateModalVisible && (
+        <ManualStatusUpdateModal
+          visible={manualUpdateModalVisible}
+          onDismiss={() => {
+            setManualUpdateModalVisible(false);
+            setSelectedDate(''); // Reset selectedDate khi đóng modal
+          }}
+          date={selectedDate}
+          currentStatus={state.weeklyStatus[selectedDate] || null}
+          shift={state.activeShift}
+          availableShifts={state.shifts}
+          onStatusUpdate={handleStatusUpdate}
+          onTimeEdit={handleTimeEdit}
+          onRecalculateFromLogs={handleRecalculateFromLogs}
+          onClearManualStatus={handleClearManualStatus}
+        />
+      )}
     </>
   );
 }

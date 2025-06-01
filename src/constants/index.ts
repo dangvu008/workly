@@ -200,9 +200,25 @@ export const WEEKLY_STATUS = {
     text: 'Về Sớm',
   },
   DI_MUON_VE_SOM: {
-    icon: '⚠️',
+    icon: '⏰🏃‍♂️',
     color: '#FF5722',
-    text: 'Đi Muộn & Về Sớm',
+    text: 'Vào muộn & Ra sớm',
+  },
+  // Các trạng thái đặc biệt cho modal
+  TINH_THEO_CHAM_CONG: {
+    icon: '🧮',
+    color: '#2196F3',
+    text: 'Tính theo Chấm công',
+  },
+  THIEU_LOG: {
+    icon: '❓',
+    color: '#9E9E9E',
+    text: 'Thiếu Log',
+  },
+  XOA_TRANG_THAI_THU_CONG: {
+    icon: '🗑️',
+    color: '#F44336',
+    text: 'Xóa trạng thái thủ công',
   },
   CHUA_DI: {
     icon: '🏠',

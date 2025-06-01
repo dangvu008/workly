@@ -54,7 +54,8 @@ export interface AttendanceLog {
 }
 
 export interface DailyWorkStatus {
-  status: 'completed' | 'late' | 'early' | 'absent' | 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review' | 'pending' | 'NGHI_PHEP' | 'NGHI_BENH' | 'NGHI_LE' | 'VANG_MAT' | 'CONG_TAC' | 'DU_CONG' | 'RV' | 'DI_MUON' | 'VE_SOM' | 'DI_MUON_VE_SOM' | 'CHUA_DI' | 'DA_DI_CHUA_VAO' | 'CHUA_RA';
+  status: 'completed' | 'late' | 'early' | 'absent' | 'manual_present' | 'manual_absent' | 'manual_holiday' | 'manual_completed' | 'manual_review' | 'pending' | 'NGHI_PHEP' | 'NGHI_BENH' | 'NGHI_LE' | 'VANG_MAT' | 'CONG_TAC' | 'DU_CONG' | 'RV' | 'DI_MUON' | 'VE_SOM' | 'DI_MUON_VE_SOM' | 'CHUA_DI' | 'DA_DI_CHUA_VAO' | 'CHUA_RA' | 'TINH_THEO_CHAM_CONG' | 'THIEU_LOG' | 'XOA_TRANG_THAI_THU_CONG';
+  appliedShiftIdForDay?: string; // ID ca làm việc áp dụng cho ngày này
   vaoLogTime?: string; // ISO 8601 timestamp
   raLogTime?: string; // ISO 8601 timestamp
   standardHoursScheduled: number;

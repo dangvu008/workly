@@ -9,9 +9,7 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
-
-
-
+import { NotificationStatusBanner } from '../components/NotificationStatusBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
@@ -39,11 +37,13 @@ const MemoizedAttendanceHistory = React.memo(AttendanceHistory);
 export function HomeScreen({ navigation }: HomeScreenProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
+
+  // ✅ Tất cả useState hooks được khai báo đầu tiên và nhất quán
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshingData, setIsRefreshingData] = useState(false);
-
-
+  const [topNotes, setTopNotes] = useState<any[]>([]);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
 
   // Memoized responsive padding
   const responsivePadding = useMemo(() => getResponsivePadding(), []);
@@ -80,11 +80,6 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       setIsRefreshingData(false);
     }
   }, [refreshing, isRefreshingData, actions]);
-
-
-
-  const [topNotes, setTopNotes] = React.useState<any[]>([]);
-  const [expandedNotes, setExpandedNotes] = React.useState<Set<string>>(new Set());
 
 
 
@@ -147,7 +142,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   // Check for conflicting reminders - Optimized with memoization
-  const getConflictWarning = React.useMemo(() => {
+  const getConflictWarning = useMemo(() => {
     if (!state.settings?.notesShowConflictWarning || topNotes.length === 0) return null;
 
     const upcomingNotes = topNotes.filter(note => note.reminderDateTime);
@@ -180,7 +175,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }, [state.settings?.notesShowConflictWarning, topNotes]);
 
   // Load upcoming notes - Debounced to prevent excessive calls
-  const loadTopNotes = React.useCallback(
+  const loadTopNotes = useCallback(
     debounce(async () => {
       try {
         const upcomingNotes = getUpcomingNotes();
@@ -194,7 +189,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   );
 
   // Load top notes when notes or settings change
-  React.useEffect(() => {
+  useEffect(() => {
     loadTopNotes();
   }, [state.notes, state.settings?.notesDisplayCount, state.activeShift]);
 
@@ -375,6 +370,11 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               </View>
             </View>
           </Card.Content>
+        </AnimatedCard>
+
+        {/* Notification Status Banner - Hiển thị khi có vấn đề với notifications */}
+        <AnimatedCard animationType="slideUp" delay={50}>
+          <NotificationStatusBanner />
         </AnimatedCard>
 
         {/* Weather Widget với animation */}

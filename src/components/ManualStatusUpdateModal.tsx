@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Modal, Text, Button, useTheme, Divider, IconButton, List, Menu, TouchableRipple } from 'react-native-paper';
-import { format, parseISO, isFuture, isToday, isPast } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Modal, Portal, Text, Button, useTheme, Menu, TouchableRipple } from 'react-native-paper';
+import { format, parseISO, isToday, isPast } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { DailyWorkStatus, Shift } from '../types';
-import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
+import { WEEKLY_STATUS } from '../constants';
 import { TimeEditModal } from './TimeEditModal';
 
 interface ManualStatusUpdateModalProps {
@@ -13,521 +13,562 @@ interface ManualStatusUpdateModalProps {
   date: string;
   currentStatus: DailyWorkStatus | null;
   shift: Shift | null;
-  onStatusUpdate: (status: DailyWorkStatus['status']) => Promise<void>;
-  onTimeEdit: (checkInTime: string, checkOutTime: string) => Promise<void>;
-  onRecalculateFromLogs: () => Promise<void>;
-  onClearManualStatus: () => Promise<void>;
+  availableShifts: Shift[];
+  onStatusUpdate: (data: {
+    selectedShiftId: string;
+    status: DailyWorkStatus['status'];
+    checkInTime?: string;
+    checkOutTime?: string;
+  }) => Promise<void>;
+  onTimeEdit?: (checkInTime: string, checkOutTime: string) => Promise<void>;
+  onRecalculateFromLogs?: () => Promise<void>;
+  onClearManualStatus?: () => Promise<void>;
 }
 
+/**
+ * Modal cập nhật trạng thái làm việc với thiết kế mới
+ * - Thứ tự: Ca làm việc → Trạng thái → Giờ chấm công (conditional)
+ * - Logic editability: Giờ chỉ editable khi chọn trạng thái làm việc
+ * - Validation theo ngữ cảnh
+ */
 export function ManualStatusUpdateModal({
   visible,
   onDismiss,
   date,
   currentStatus,
   shift,
+  availableShifts = [],
   onStatusUpdate,
   onTimeEdit,
   onRecalculateFromLogs,
   onClearManualStatus,
 }: ManualStatusUpdateModalProps) {
   const theme = useTheme();
-  const [timeEditVisible, setTimeEditVisible] = useState(false);
 
-  // Dropdown states
-  const [attendanceMenuVisible, setAttendanceMenuVisible] = useState(false);
-  const [leaveMenuVisible, setLeaveMenuVisible] = useState(false);
-  const [selectedAttendanceAction, setSelectedAttendanceAction] = useState<string>('');
-  const [selectedLeaveStatus, setSelectedLeaveStatus] = useState<DailyWorkStatus['status'] | ''>('');
+  // ✅ Tất cả useState hooks phải được khai báo đầu tiên
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<DailyWorkStatus['status'] | ''>('');
+  const [checkInTime, setCheckInTime] = useState<string>('');
+  const [checkOutTime, setCheckOutTime] = useState<string>('');
+  const [timeFieldsEditable, setTimeFieldsEditable] = useState(false);
+  const [shiftMenuVisible, setShiftMenuVisible] = useState(false);
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+  const [timeEditModalVisible, setTimeEditModalVisible] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  if (!visible) {
-    return null;
-  }
-
-  if (!date) {
-    return null;
-  }
-
-  let dateObj: Date;
-  try {
-    dateObj = parseISO(date);
-    if (isNaN(dateObj.getTime())) {
-      return null;
+  // ✅ Validation và xử lý date - sử dụng useMemo
+  const isValidDate = React.useMemo(() => {
+    if (!date || typeof date !== 'string') {
+      console.error('ManualStatusUpdateModal: Invalid date prop:', date);
+      return false;
     }
-  } catch (error) {
+
+    // Kiểm tra format YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      console.error('ManualStatusUpdateModal: Invalid date format, expected YYYY-MM-DD:', date);
+      return false;
+    }
+
+    // Kiểm tra date có thể parse được không
+    try {
+      const testDate = parseISO(date);
+      if (isNaN(testDate.getTime())) {
+        console.error('ManualStatusUpdateModal: Date cannot be parsed:', date);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('ManualStatusUpdateModal: Error validating date:', error, 'Date:', date);
+      return false;
+    }
+  }, [date]);
+
+  // ✅ Xác định loại ngày và dateObj
+  const { dateObj, dateType } = React.useMemo(() => {
+    if (!isValidDate) {
+      return { dateObj: null, dateType: 'current' as const };
+    }
+
+    try {
+      const parsedDate = parseISO(date);
+
+      let type: 'past' | 'current' | 'future';
+      if (isToday(parsedDate)) {
+        type = 'current';
+      } else if (isPast(parsedDate)) {
+        type = 'past';
+      } else {
+        type = 'future';
+      }
+
+      return { dateObj: parsedDate, dateType: type };
+    } catch (error) {
+      console.error('ManualStatusUpdateModal: Error parsing date in useMemo:', error, 'Date:', date);
+      return { dateObj: null, dateType: 'current' as const };
+    }
+  }, [date, isValidDate]);
+
+  // ✅ Khởi tạo dữ liệu khi modal mở - luôn gọi useEffect
+  useEffect(() => {
+    if (visible && isValidDate && dateObj) {
+      // Khởi tạo ca làm việc
+      const initialShiftId = currentStatus?.appliedShiftIdForDay || shift?.id ||
+                            (availableShifts.length > 0 ? availableShifts[0].id : '');
+      setSelectedShiftId(initialShiftId);
+
+      // Khởi tạo trạng thái
+      setSelectedStatus(currentStatus?.status || '');
+
+      // Khởi tạo giờ chấm công
+      setCheckInTime(currentStatus?.vaoLogTime ?
+        format(parseISO(currentStatus.vaoLogTime), 'HH:mm') : '');
+      setCheckOutTime(currentStatus?.raLogTime ?
+        format(parseISO(currentStatus.raLogTime), 'HH:mm') : '');
+
+      // Khởi tạo editability - ban đầu disabled
+      setTimeFieldsEditable(false);
+      setErrors({});
+    }
+  }, [visible, currentStatus, shift, availableShifts, isValidDate, dateObj]);
+
+  // ✅ Early return sau tất cả hooks để tránh lỗi hooks order
+  if (!visible || !isValidDate || !dateObj) {
     return null;
   }
 
-  const dayOfWeek = DAYS_OF_WEEK.vi[dateObj.getDay()];
-  const formattedDate = format(dateObj, 'dd/MM/yyyy', { locale: vi });
-
-  const isDateFuture = isFuture(dateObj) && !isToday(dateObj);
-  const isDatePastOrToday = isPast(dateObj) || isToday(dateObj);
-  const hasManualStatus = currentStatus?.isManualOverride;
-
-  // Các trạng thái nghỉ có thể chọn
-  const leaveStatuses: Array<{
-    status: DailyWorkStatus['status'];
-    title: string;
-    icon: string;
-    description: string;
-  }> = [
-    {
-      status: 'NGHI_PHEP',
-      title: 'Nghỉ Phép',
-      icon: 'beach',
-      description: isDatePastOrToday ? 'Nghỉ phép có lương, đã được duyệt' : 'Đăng ký nghỉ phép cho ngày này',
-    },
-    {
-      status: 'NGHI_BENH',
-      title: 'Nghỉ Bệnh',
-      icon: 'hospital-box',
-      description: isDatePastOrToday ? 'Nghỉ ốm, bệnh tật có giấy tờ' : 'Đăng ký nghỉ bệnh cho ngày này',
-    },
-    {
-      status: 'NGHI_LE',
-      title: 'Nghỉ Lễ',
-      icon: 'flag',
-      description: isDatePastOrToday ? 'Nghỉ lễ, tết, ngày nghỉ chính thức' : 'Đánh dấu nghỉ lễ cho ngày này',
-    },
-    {
-      status: 'VANG_MAT',
-      title: 'Vắng Mặt',
-      icon: 'account-remove',
-      description: isDatePastOrToday ? 'Vắng mặt không phép, không báo trước' : 'Đăng ký vắng mặt cho ngày này',
-    },
-    {
-      status: 'CONG_TAC',
-      title: 'Công Tác',
-      icon: 'airplane',
-      description: isDatePastOrToday ? 'Đi công tác, làm việc tại địa điểm khác' : 'Đăng ký công tác cho ngày này',
-    },
-  ];
-
-  const handleStatusSelect = async (status: DailyWorkStatus['status']) => {
-    try {
-      await onStatusUpdate(status);
-      onDismiss();
-
-      const statusInfo = WEEKLY_STATUS[status];
-      const actionType = isDatePastOrToday ? 'cập nhật' : 'đăng ký';
-      const dateType = isToday(dateObj) ? 'hôm nay' : 
-                      isPast(dateObj) ? `ngày ${format(dateObj, 'dd/MM')}` : 
-                      `ngày ${format(dateObj, 'dd/MM')} (tương lai)`;
-      
-      Alert.alert(
-        '✅ Thành công',
-        `Đã ${actionType} trạng thái ${dateType} thành "${statusInfo?.text || status}"`
-      );
-    } catch (error) {
-      Alert.alert('❌ Lỗi', 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+  // Danh sách trạng thái theo loại ngày
+  const getAvailableStatuses = () => {
+    if (dateType === 'future') {
+      // Ngày tương lai: chỉ các trạng thái nghỉ
+      return [
+        { key: 'NGHI_PHEP', ...WEEKLY_STATUS.NGHI_PHEP },
+        { key: 'NGHI_BENH', ...WEEKLY_STATUS.NGHI_BENH },
+        { key: 'NGHI_LE', ...WEEKLY_STATUS.NGHI_LE },
+        { key: 'VANG_MAT', ...WEEKLY_STATUS.VANG_MAT },
+        { key: 'CONG_TAC', ...WEEKLY_STATUS.CONG_TAC },
+      ];
+    } else {
+      // Ngày quá khứ/hiện tại: đầy đủ options
+      return [
+        { key: 'TINH_THEO_CHAM_CONG', icon: '🧮', text: 'Tính theo Chấm công', color: '#2196F3' },
+        { key: 'DU_CONG', ...WEEKLY_STATUS.DU_CONG },
+        { key: 'DI_MUON', ...WEEKLY_STATUS.DI_MUON },
+        { key: 'VE_SOM', ...WEEKLY_STATUS.VE_SOM },
+        { key: 'DI_MUON_VE_SOM', icon: '⏰🏃‍♂️', text: 'Vào muộn & Ra sớm', color: '#FF5722' },
+        { key: 'NGHI_PHEP', ...WEEKLY_STATUS.NGHI_PHEP },
+        { key: 'NGHI_BENH', ...WEEKLY_STATUS.NGHI_BENH },
+        { key: 'NGHI_LE', ...WEEKLY_STATUS.NGHI_LE },
+        { key: 'VANG_MAT', ...WEEKLY_STATUS.VANG_MAT },
+        { key: 'CONG_TAC', ...WEEKLY_STATUS.CONG_TAC },
+        { key: 'THIEU_LOG', icon: '❓', text: 'Thiếu Log', color: '#9E9E9E' },
+        ...(currentStatus?.isManualOverride ? [
+          { key: 'XOA_TRANG_THAI_THU_CONG', icon: '🗑️', text: 'Xóa trạng thái thủ công', color: '#F44336' }
+        ] : [])
+      ];
     }
   };
 
-  const handleRecalculate = async () => {
-    try {
-      await onRecalculateFromLogs();
-      onDismiss();
-      
-      const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
-      Alert.alert(
-        '🔄 Thành công',
-        `Đã tính lại trạng thái cho ${dateType} dựa trên dữ liệu chấm công thực tế`
-      );
-    } catch (error) {
-      Alert.alert('❌ Lỗi', 'Không thể tính lại trạng thái. Vui lòng thử lại.');
-    }
-  };
-
-  const handleClearManual = async () => {
-    const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
+  // Xử lý thay đổi trạng thái - Logic editability
+  const handleStatusChange = (newStatus: string) => {
+    setSelectedStatus(newStatus as DailyWorkStatus['status']);
     
-    Alert.alert(
-      '⚠️ Xác nhận xóa',
-      `Bạn có chắc muốn xóa trạng thái thủ công và tính lại cho ${dateType}?\n\nHệ thống sẽ tự động tính toán lại dựa trên dữ liệu chấm công thực tế.`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa và tính lại',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await onClearManualStatus();
-              onDismiss();
-              Alert.alert('🗑️ Thành công', `Đã xóa trạng thái thủ công cho ${dateType} và tính lại từ chấm công`);
-            } catch (error) {
-              Alert.alert('❌ Lỗi', 'Không thể xóa trạng thái. Vui lòng thử lại.');
-            }
-          },
-        },
-      ]
+    // Logic kích hoạt sửa giờ
+    const workStatuses = ['TINH_THEO_CHAM_CONG', 'DU_CONG', 'DI_MUON', 'VE_SOM', 'DI_MUON_VE_SOM', 'THIEU_LOG'];
+    const leaveStatuses = ['NGHI_PHEP', 'NGHI_BENH', 'NGHI_LE', 'VANG_MAT', 'CONG_TAC'];
+    
+    if (workStatuses.includes(newStatus)) {
+      // Kích hoạt chỉnh sửa giờ cho trạng thái làm việc
+      setTimeFieldsEditable(true);
+      
+      // Auto-fill giờ từ ca làm việc nếu chưa có
+      const selectedShift = availableShifts.find(s => s.id === selectedShiftId);
+      if (selectedShift && !checkInTime) {
+        setCheckInTime(selectedShift.startTime);
+      }
+      if (selectedShift && !checkOutTime) {
+        setCheckOutTime(selectedShift.endTime);
+      }
+    } else if (leaveStatuses.includes(newStatus)) {
+      // Vô hiệu hóa chỉnh sửa giờ cho trạng thái nghỉ
+      setTimeFieldsEditable(false);
+      // Có thể xóa giờ hoặc giữ nguyên tùy logic
+    }
+    
+    setStatusMenuVisible(false);
+  };
+
+  // Validation dữ liệu
+  const validateForm = (): boolean => {
+    const newErrors: {[key: string]: string} = {};
+    
+    if (!selectedShiftId) {
+      newErrors.shift = 'Vui lòng chọn ca làm việc';
+    }
+    
+    if (!selectedStatus) {
+      newErrors.status = 'Vui lòng chọn trạng thái';
+    }
+    
+    // Validation cho trạng thái làm việc
+    const workStatuses = ['TINH_THEO_CHAM_CONG', 'DU_CONG', 'DI_MUON', 'VE_SOM', 'DI_MUON_VE_SOM', 'THIEU_LOG'];
+    if (workStatuses.includes(selectedStatus) && timeFieldsEditable) {
+      if (!checkInTime || !checkOutTime) {
+        newErrors.time = 'Vui lòng nhập đầy đủ giờ chấm công cho trạng thái này';
+      } else {
+        // Validation thời gian
+        const [inHour, inMin] = checkInTime.split(':').map(Number);
+        const [outHour, outMin] = checkOutTime.split(':').map(Number);
+        
+        if (isNaN(inHour) || isNaN(inMin) || isNaN(outHour) || isNaN(outMin)) {
+          newErrors.time = 'Định dạng giờ không hợp lệ (HH:MM)';
+        } else {
+          const inMinutes = inHour * 60 + inMin;
+          const outMinutes = outHour * 60 + outMin;
+          
+          if (outMinutes <= inMinutes) {
+            newErrors.time = 'Giờ ra phải sau giờ vào';
+          }
+        }
+      }
+      
+      // Validation mâu thuẫn trạng thái vs giờ
+      if (selectedStatus === 'DI_MUON' && checkInTime) {
+        const selectedShift = availableShifts.find(s => s.id === selectedShiftId);
+        if (selectedShift && checkInTime <= selectedShift.startTime) {
+          newErrors.consistency = `Giờ vào không khớp với trạng thái 'Vào muộn'. Vui lòng chọn 'Tính theo chấm công' hoặc điều chỉnh giờ.`;
+        }
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Xử lý lưu thay đổi
+  const handleSave = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      // Xử lý các trường hợp đặc biệt
+      if (selectedStatus === 'XOA_TRANG_THAI_THU_CONG') {
+        if (onClearManualStatus) {
+          await onClearManualStatus();
+        }
+        onDismiss();
+        return;
+      }
+
+      if (selectedStatus === 'TINH_THEO_CHAM_CONG') {
+        if (onRecalculateFromLogs) {
+          await onRecalculateFromLogs();
+        }
+        onDismiss();
+        return;
+      }
+
+      // Kiểm tra selectedStatus không rỗng trước khi gọi onStatusUpdate
+      if (!selectedStatus) {
+        console.error('ManualStatusUpdateModal: selectedStatus is empty');
+        return;
+      }
+
+      // Chuẩn bị dữ liệu
+      const updateData = {
+        selectedShiftId,
+        status: selectedStatus as Exclude<typeof selectedStatus, ''>, // Type assertion để loại bỏ empty string
+        checkInTime: timeFieldsEditable && checkInTime ? checkInTime : undefined,
+        checkOutTime: timeFieldsEditable && checkOutTime ? checkOutTime : undefined,
+      };
+
+      await onStatusUpdate(updateData);
+      onDismiss();
+      
+    } catch (error) {
+      console.error('Error saving status:', error);
+      Alert.alert('❌ Lỗi', 'Không thể lưu thay đổi. Vui lòng thử lại.');
+    }
+  };
+
+  // Render header
+  const renderHeader = () => {
+    // ✅ Đảm bảo dateObj không null vì đã check ở early return
+    if (!dateObj) return null;
+
+    const dayName = format(dateObj, 'EEEE', { locale: vi });
+    const dateStr = format(dateObj, 'dd/MM/yyyy');
+
+    let dateTypeIcon = '';
+    let dateTypeText = '';
+
+    switch (dateType) {
+      case 'current':
+        dateTypeIcon = '📅';
+        dateTypeText = 'Hôm nay';
+        break;
+      case 'past':
+        dateTypeIcon = '⏪';
+        dateTypeText = 'Quá khứ';
+        break;
+      case 'future':
+        dateTypeIcon = '⏩';
+        dateTypeText = 'Tương lai';
+        break;
+    }
+
+    return (
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>
+          Cập nhật cho: {dayName}, {dateStr}
+        </Text>
+        <Text style={[styles.headerSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+          {dateTypeIcon} {dateTypeText}
+        </Text>
+      </View>
     );
   };
 
-  const handleTimeEditSave = async (checkInTime: string, checkOutTime: string) => {
-    try {
-      await onTimeEdit(checkInTime, checkOutTime);
-      setTimeEditVisible(false);
-      onDismiss();
-
-      const dateType = isToday(dateObj) ? 'hôm nay' : `ngày ${format(dateObj, 'dd/MM')}`;
-      Alert.alert(
-        '🕐 Thành công',
-        `Đã cập nhật giờ chấm công cho ${dateType}\nVào: ${checkInTime}\nRa: ${checkOutTime}`
-      );
-    } catch (error) {
-      Alert.alert('❌ Lỗi', 'Không thể cập nhật giờ chấm công. Vui lòng thử lại.');
-    }
-  };
-
-  // Dropdown handlers
-  const handleAttendanceActionSelect = (action: string) => {
-    setSelectedAttendanceAction(action);
-    setAttendanceMenuVisible(false);
-    
-    // Execute action immediately
-    switch (action) {
-      case 'recalculate':
-        handleRecalculate();
-        break;
-      case 'edit_time':
-        setTimeEditVisible(true);
-        break;
-      case 'clear_manual':
-        handleClearManual();
-        break;
-    }
-  };
-
-  const handleLeaveStatusSelect = (status: DailyWorkStatus['status']) => {
-    setSelectedLeaveStatus(status);
-    setLeaveMenuVisible(false);
-    
-    // Execute action immediately
-    handleStatusSelect(status);
-  };
-
-  // Attendance actions for dropdown
-  const attendanceActions = [
-    {
-      key: 'recalculate',
-      title: 'Tính theo chấm công',
-      description: 'Tự động tính dựa trên log check-in/check-out',
-      icon: 'calculator',
-    },
-    {
-      key: 'edit_time',
-      title: 'Chỉnh sửa giờ chấm công',
-      description: 'Nhập/sửa giờ vào và giờ ra thủ công',
-      icon: 'clock-edit',
-    },
-    ...(hasManualStatus ? [{
-      key: 'clear_manual',
-      title: 'Xóa trạng thái thủ công',
-      description: 'Xóa trạng thái nghỉ và tính lại từ chấm công',
-      icon: 'delete',
-    }] : []),
-  ];
-
   return (
-    <>
+    <Portal>
       <Modal
         visible={visible}
         onDismiss={onDismiss}
         contentContainerStyle={[
-          styles.container,
+          styles.modalContainer,
           { backgroundColor: theme.colors.surface }
         ]}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-                Cập nhật trạng thái
-              </Text>
-              <IconButton
-                icon="close"
-                size={24}
-                iconColor={theme.colors.onSurface}
-                onPress={onDismiss}
-              />
-            </View>
-
-            <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
-              {dayOfWeek}, {formattedDate}
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {renderHeader()}
+          
+          {/* Ca làm việc áp dụng cho ngày này */}
+          <View style={styles.fieldContainer}>
+            <Text style={[styles.fieldLabel, { color: theme.colors.onSurface }]}>
+              Ca làm việc áp dụng cho ngày này: *
             </Text>
-
-            {/* Hiển thị loại ngày */}
-            <View style={styles.dateTypeContainer}>
-              <Text style={[
-                styles.dateTypeText,
-                {
-                  color: isDatePastOrToday 
-                    ? (isToday(dateObj) ? theme.colors.primary : theme.colors.onSurfaceVariant)
-                    : theme.colors.secondary,
-                  backgroundColor: isDatePastOrToday 
-                    ? (isToday(dateObj) ? theme.colors.primaryContainer : theme.colors.surfaceVariant)
-                    : theme.colors.secondaryContainer,
-                }
-              ]}>
-                {isToday(dateObj) ? '📅 Hôm nay' : 
-                 isPast(dateObj) ? '⏪ Quá khứ' : 
-                 '⏩ Tương lai'}
-              </Text>
-            </View>
-
-            {shift ? (
-              <Text style={[styles.shiftText, { color: theme.colors.primary }]}>
-                Ca: {shift.name} ({shift.startTime} - {shift.endTime})
-              </Text>
-            ) : (
-              <Text style={[styles.shiftText, { color: theme.colors.error }]}>
-                ⚠️ Chưa có ca làm việc được kích hoạt
-              </Text>
-            )}
-
-            {/* Hiển thị trạng thái hiện tại nếu có */}
-            {currentStatus && (
-              <Text style={[styles.currentStatusText, { color: theme.colors.outline }]}>
-                Trạng thái hiện tại: {WEEKLY_STATUS[currentStatus.status]?.text || currentStatus.status}
-                {hasManualStatus && ' (Thủ công)'}
+            <Menu
+              visible={shiftMenuVisible}
+              onDismiss={() => setShiftMenuVisible(false)}
+              anchor={
+                <TouchableRipple
+                  style={[styles.dropdown, { borderColor: theme.colors.outline }]}
+                  onPress={() => setShiftMenuVisible(true)}
+                >
+                  <View style={styles.dropdownContent}>
+                    <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
+                      {availableShifts.find(s => s.id === selectedShiftId)?.name || 'Chọn ca làm việc'}
+                    </Text>
+                    <Text style={[styles.dropdownIcon, { color: theme.colors.onSurfaceVariant }]}>
+                      ▼
+                    </Text>
+                  </View>
+                </TouchableRipple>
+              }
+            >
+              {availableShifts.map((shift) => (
+                <Menu.Item
+                  key={shift.id}
+                  onPress={() => {
+                    setSelectedShiftId(shift.id);
+                    setShiftMenuVisible(false);
+                  }}
+                  title={shift.name}
+                />
+              ))}
+            </Menu>
+            {errors.shift && (
+              <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                {errors.shift}
               </Text>
             )}
           </View>
-
-          <Divider style={{ marginVertical: 16 }} />
-
-          {/* Dropdown cho ngày quá khứ/hiện tại */}
-          {isDatePastOrToday && (
+          
+          {/* Trạng thái làm việc */}
+          <View style={styles.fieldContainer}>
+            <Text style={[styles.fieldLabel, { color: theme.colors.onSurface }]}>
+              Trạng thái Làm việc: *
+            </Text>
+            <Menu
+              visible={statusMenuVisible}
+              onDismiss={() => setStatusMenuVisible(false)}
+              anchor={
+                <TouchableRipple
+                  style={[styles.dropdown, { borderColor: theme.colors.outline }]}
+                  onPress={() => setStatusMenuVisible(true)}
+                >
+                  <View style={styles.dropdownContent}>
+                    <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
+                      {getAvailableStatuses().find(s => s.key === selectedStatus)?.text || 'Chọn trạng thái'}
+                    </Text>
+                    <Text style={[styles.dropdownIcon, { color: theme.colors.onSurfaceVariant }]}>
+                      ▼
+                    </Text>
+                  </View>
+                </TouchableRipple>
+              }
+            >
+              {getAvailableStatuses().map((status) => (
+                <Menu.Item
+                  key={status.key}
+                  onPress={() => handleStatusChange(status.key)}
+                  title={`${status.icon} ${status.text}`}
+                />
+              ))}
+            </Menu>
+            {errors.status && (
+              <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                {errors.status}
+              </Text>
+            )}
+          </View>
+          
+          {/* Giờ chấm công - chỉ hiện khi editable */}
+          {timeFieldsEditable && (
             <>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                📊 Tính toán từ chấm công
-              </Text>
-
-              <Text style={[styles.dropdownLabel, { color: theme.colors.onSurfaceVariant }]}>
-                Chọn hành động:
-              </Text>
-
-              <Menu
-                visible={attendanceMenuVisible}
-                onDismiss={() => setAttendanceMenuVisible(false)}
-                anchor={
-                  <TouchableRipple
-                    onPress={() => setAttendanceMenuVisible(true)}
-                    style={[
-                      styles.dropdownButton,
-                      { 
-                        backgroundColor: theme.colors.surfaceVariant,
-                        borderColor: theme.colors.outline,
-                      }
-                    ]}
-                  >
-                    <View style={styles.dropdownContent}>
-                      <List.Icon icon="calculator" color={theme.colors.onSurfaceVariant} />
-                      <View style={styles.dropdownTextContainer}>
-                        <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
-                          {selectedAttendanceAction ? 
-                            attendanceActions.find(a => a.key === selectedAttendanceAction)?.title :
-                            'Chọn hành động...'
-                          }
-                        </Text>
-                      </View>
-                      <List.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />
-                    </View>
-                  </TouchableRipple>
-                }
-              >
-                {attendanceActions.map((action) => (
-                  <Menu.Item
-                    key={action.key}
-                    onPress={() => handleAttendanceActionSelect(action.key)}
-                    title={action.title}
-                    leadingIcon={action.icon}
-                    titleStyle={{ color: action.key === 'clear_manual' ? theme.colors.error : theme.colors.onSurface }}
-                  />
-                ))}
-              </Menu>
-
-              <Divider style={{ marginVertical: 16 }} />
+              <View style={styles.fieldContainer}>
+                <Text style={[styles.fieldLabel, { color: theme.colors.onSurface }]}>
+                  Giờ Chấm Công Vào:
+                </Text>
+                <TouchableRipple
+                  style={[styles.dropdown, { borderColor: theme.colors.outline }]}
+                  onPress={() => setTimeEditModalVisible(true)}
+                >
+                  <View style={styles.dropdownContent}>
+                    <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
+                      {checkInTime || 'Chọn giờ vào'}
+                    </Text>
+                    <Text style={[styles.dropdownIcon, { color: theme.colors.onSurfaceVariant }]}>
+                      ▼
+                    </Text>
+                  </View>
+                </TouchableRipple>
+              </View>
+              
+              <View style={styles.fieldContainer}>
+                <Text style={[styles.fieldLabel, { color: theme.colors.onSurface }]}>
+                  Giờ Chấm Công Ra:
+                </Text>
+                <TouchableRipple
+                  style={[styles.dropdown, { borderColor: theme.colors.outline }]}
+                  onPress={() => setTimeEditModalVisible(true)}
+                >
+                  <View style={styles.dropdownContent}>
+                    <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
+                      {checkOutTime || 'Chọn giờ ra'}
+                    </Text>
+                    <Text style={[styles.dropdownIcon, { color: theme.colors.onSurfaceVariant }]}>
+                      ▼
+                    </Text>
+                  </View>
+                </TouchableRipple>
+              </View>
+              
+              {(errors.time || errors.consistency) && (
+                <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                  {errors.time || errors.consistency}
+                </Text>
+              )}
             </>
           )}
-
-          {/* Dropdown cho trạng thái nghỉ */}
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            {isDatePastOrToday ? '🏖️ Cập nhật trạng thái nghỉ' : '📝 Đăng ký trạng thái nghỉ'}
-          </Text>
-
-          <Text style={[styles.dropdownLabel, { color: theme.colors.onSurfaceVariant }]}>
-            Chọn trạng thái mới:
-          </Text>
-
-          <Menu
-            visible={leaveMenuVisible}
-            onDismiss={() => setLeaveMenuVisible(false)}
-            anchor={
-              <TouchableRipple
-                onPress={() => setLeaveMenuVisible(true)}
-                style={[
-                  styles.dropdownButton,
-                  { 
-                    backgroundColor: theme.colors.surfaceVariant,
-                    borderColor: theme.colors.outline,
-                  }
-                ]}
-              >
-                <View style={styles.dropdownContent}>
-                  <List.Icon 
-                    icon={selectedLeaveStatus ? 
-                      leaveStatuses.find(s => s.status === selectedLeaveStatus)?.icon || 'calendar' :
-                      currentStatus?.status ?
-                        (leaveStatuses.find(s => s.status === currentStatus.status)?.icon || 'calendar') :
-                        'calendar'
-                    } 
-                    color={theme.colors.onSurfaceVariant} 
-                  />
-                  <View style={styles.dropdownTextContainer}>
-                    <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
-                      {selectedLeaveStatus ? 
-                        leaveStatuses.find(s => s.status === selectedLeaveStatus)?.title :
-                        currentStatus?.status ? 
-                          (WEEKLY_STATUS[currentStatus.status]?.text || 'Chọn trạng thái...') :
-                          'Chọn trạng thái...'
-                      }
-                    </Text>
-                    {(selectedLeaveStatus || currentStatus?.status) && (
-                      <Text style={[styles.dropdownDescription, { color: theme.colors.onSurfaceVariant }]}>
-                        {selectedLeaveStatus ? 
-                          leaveStatuses.find(s => s.status === selectedLeaveStatus)?.description :
-                          currentStatus?.status ?
-                            leaveStatuses.find(s => s.status === currentStatus.status)?.description || 'Trạng thái hiện tại' :
-                            ''
-                        }
-                      </Text>
-                    )}
-                  </View>
-                  <List.Icon icon="chevron-down" color={theme.colors.onSurfaceVariant} />
-                </View>
-              </TouchableRipple>
-            }
-          >
-            {leaveStatuses.map((item) => (
-              <Menu.Item
-                key={item.status}
-                onPress={() => handleLeaveStatusSelect(item.status)}
-                title={item.title}
-                leadingIcon={item.icon}
-                titleStyle={{ color: theme.colors.onSurface }}
-              />
-            ))}
-          </Menu>
-
-          {/* Nút hủy */}
-          <Button
-            mode="outlined"
-            onPress={onDismiss}
-            style={styles.cancelButton}
-          >
-            Hủy
-          </Button>
+          
+          {/* Nút hành động */}
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="outlined"
+              onPress={onDismiss}
+              style={styles.button}
+            >
+              HỦY
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleSave}
+              style={styles.button}
+            >
+              LƯU THAY ĐỔI
+            </Button>
+          </View>
         </ScrollView>
+        
+        {/* Time Edit Modal */}
+        <TimeEditModal
+          visible={timeEditModalVisible}
+          onDismiss={() => setTimeEditModalVisible(false)}
+          currentCheckInTime={checkInTime}
+          currentCheckOutTime={checkOutTime}
+          shift={availableShifts.find(s => s.id === selectedShiftId) || null}
+          onSave={(inTime, outTime) => {
+            setCheckInTime(inTime);
+            setCheckOutTime(outTime);
+            setTimeEditModalVisible(false);
+          }}
+        />
       </Modal>
-
-      {/* Time Edit Modal */}
-      <TimeEditModal
-        visible={timeEditVisible}
-        onDismiss={() => setTimeEditVisible(false)}
-        currentCheckInTime={currentStatus?.vaoLogTime}
-        currentCheckOutTime={currentStatus?.raLogTime}
-        shift={shift}
-        onSave={handleTimeEditSave}
-      />
-    </>
+    </Portal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  modalContainer: {
     margin: 20,
     borderRadius: 12,
     maxHeight: '80%',
+  },
+  scrollView: {
     padding: 20,
   },
   header: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '500',
     marginBottom: 8,
   },
-  headerContent: {
+  dropdown: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  dropdownContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  dateText: {
-    fontSize: 16,
-    marginTop: 4,
-  },
-  shiftText: {
-    fontSize: 14,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  dateTypeContainer: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  dateTypeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  currentStatusText: {
-    fontSize: 12,
-    marginTop: 6,
-    fontStyle: 'italic',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  cancelButton: {
-    marginTop: 16,
-  },
-  // Dropdown styles
-  dropdownLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  dropdownButton: {
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 12,
-    minHeight: 56,
-  },
-  dropdownContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  dropdownTextContainer: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
   dropdownText: {
     fontSize: 16,
-    fontWeight: '500',
+    flex: 1,
   },
-  dropdownDescription: {
+  dropdownIcon: {
     fontSize: 12,
-    marginTop: 2,
-    fontStyle: 'italic',
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  button: {
+    flex: 1,
   },
 });

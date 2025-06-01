@@ -453,11 +453,12 @@ class WorkManager {
   /**
    * Đặt trạng thái làm việc thủ công
    */
-  async setManualWorkStatus(date: string, status: DailyWorkStatus['status']): Promise<void> {
+  async setManualWorkStatus(date: string, status: DailyWorkStatus['status'], selectedShiftId?: string): Promise<void> {
     try {
-      console.log(`📝 WorkManager: Setting manual work status for ${date}: ${status}`);
+      console.log(`📝 WorkManager: Setting manual work status for ${date}: ${status}`, { selectedShiftId });
 
-      const activeShiftId = await storageService.getActiveShiftId();
+      // Sử dụng selectedShiftId nếu có, nếu không thì dùng activeShift
+      const activeShiftId = selectedShiftId || await storageService.getActiveShiftId();
       const shifts = await storageService.getShiftList();
       const activeShift = activeShiftId ? shifts.find((s: Shift) => s.id === activeShiftId) : null;
 
@@ -471,6 +472,7 @@ class WorkManager {
 
       const workStatus: DailyWorkStatus = {
         status,
+        appliedShiftIdForDay: activeShiftId, // Lưu ca làm việc áp dụng cho ngày này
         vaoLogTime: undefined,
         raLogTime: undefined,
         standardHoursScheduled: standardHours,
@@ -489,6 +491,56 @@ class WorkManager {
 
     } catch (error) {
       console.error('Error setting manual work status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Tính lại trạng thái từ attendance logs
+   */
+  async recalculateFromAttendanceLogs(date: string): Promise<void> {
+    try {
+      console.log(`🔄 WorkManager: Recalculating status from logs for ${date}`);
+
+      // Lấy logs và tính lại trạng thái
+      const logs = await storageService.getAttendanceLogsForDate(date);
+      const activeShiftId = await storageService.getActiveShiftId();
+      const shifts = await storageService.getShiftList();
+      const activeShift = activeShiftId ? shifts.find((s: Shift) => s.id === activeShiftId) : null;
+
+      if (!activeShift) {
+        throw new Error('Không tìm thấy ca làm việc');
+      }
+
+      // Tính toán lại trạng thái dựa trên logs
+      const workStatus = await this.calculateDailyWorkStatus(date, activeShift, logs);
+
+      // Xóa manual override flag
+      workStatus.isManualOverride = false;
+
+      await storageService.setDailyWorkStatusForDate(date, workStatus);
+      console.log('✅ WorkManager: Status recalculated from logs');
+
+    } catch (error) {
+      console.error('❌ WorkManager: Error recalculating from logs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Xóa trạng thái thủ công và tính lại từ chấm công
+   */
+  async clearManualStatus(date: string): Promise<void> {
+    try {
+      console.log(`🗑️ WorkManager: Clearing manual status for ${date}`);
+
+      // Tính lại từ logs
+      await this.recalculateFromAttendanceLogs(date);
+
+      console.log('✅ WorkManager: Manual status cleared and recalculated');
+
+    } catch (error) {
+      console.error('❌ WorkManager: Error clearing manual status:', error);
       throw error;
     }
   }

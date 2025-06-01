@@ -1,41 +1,100 @@
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { AlarmData, Shift, Note } from '../types';
 import { NOTIFICATION_CATEGORIES } from '../constants';
 import { storageService } from './storage';
 
-// Import notifications directly for Expo SDK 53+
-import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
+// Import notifications với error handling cho Expo SDK 53+
+let Notifications: any = null;
+let Constants: any = null;
+
+// Safe import để tránh crash trong Expo Go
+try {
+  Notifications = require('expo-notifications');
+  Constants = require('expo-constants');
+} catch (error) {
+  console.warn('⚠️ Workly: expo-notifications không khả dụng trong môi trường này');
+}
 
 // Check if running in Expo Go
 const isRunningInExpoGo = () => {
-  return Constants.executionEnvironment === 'storeClient';
+  try {
+    return Constants?.executionEnvironment === 'storeClient';
+  } catch {
+    return false;
+  }
 };
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Check if notifications are available
+const isNotificationsAvailable = () => {
+  return Notifications !== null && typeof Notifications.setNotificationHandler === 'function';
+};
+
+// Configure notification behavior với safe check
+if (isNotificationsAvailable()) {
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch (error) {
+    console.warn('⚠️ Workly: Không thể cấu hình notification handler:', error);
+  }
+}
+
+interface NotificationStatus {
+  isSupported: boolean;
+  isExpoGo: boolean;
+  hasPermission: boolean;
+  platform: string;
+  message: string;
+  canSchedule: boolean;
+}
 
 class NotificationService {
   private isInitialized = false;
-  private isAvailable = true; // Assume available since we're importing directly
+  private isAvailable = false;
+  private status: NotificationStatus | null = null;
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      // Check if running in Expo Go and warn about limitations
-      if (isRunningInExpoGo() && Platform.OS === 'android') {
-        console.warn(
-          '⚠️ Workly: Push notifications có thể không hoạt động đầy đủ trong Expo Go. ' +
-          'Để có trải nghiệm tốt nhất, hãy sử dụng development build hoặc build production.'
-        );
+      // Kiểm tra xem notifications có khả dụng không
+      if (!isNotificationsAvailable()) {
+        this.isAvailable = false;
+        this.status = {
+          isSupported: false,
+          isExpoGo: isRunningInExpoGo(),
+          hasPermission: false,
+          platform: Platform.OS,
+          message: 'expo-notifications không khả dụng trong môi trường này. Sử dụng development build để có đầy đủ tính năng.',
+          canSchedule: false
+        };
+        console.warn('⚠️ Workly: Notifications không khả dụng - expo-notifications module không tìm thấy');
+        this.isInitialized = true;
+        return;
+      }
+
+      const isExpoGo = isRunningInExpoGo();
+
+      // Kiểm tra môi trường Expo Go
+      if (isExpoGo && Platform.OS === 'android') {
+        this.isAvailable = false;
+        this.status = {
+          isSupported: false,
+          isExpoGo: true,
+          hasPermission: false,
+          platform: Platform.OS,
+          message: 'Push notifications không được hỗ trợ trong Expo Go trên Android. Sử dụng development build để có đầy đủ tính năng.',
+          canSchedule: false
+        };
+        console.warn('⚠️ Workly: Push notifications không hoạt động trong Expo Go trên Android');
+        this.isInitialized = true;
+        return;
       }
 
       // Request permissions
@@ -47,63 +106,125 @@ class NotificationService {
         finalStatus = status;
       }
 
-      if (finalStatus !== 'granted') {
+      const hasPermission = finalStatus === 'granted';
+
+      if (!hasPermission) {
         console.warn('⚠️ Workly: Notification permission not granted. Nhắc nhở sẽ không hoạt động.');
       }
 
       // Configure notification categories for Android
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('shift_reminders', {
-          name: 'Nhắc nhở ca làm việc',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-          enableVibrate: true,
-        });
-
-        await Notifications.setNotificationChannelAsync('note_reminders', {
-          name: 'Nhắc nhở ghi chú',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-          enableVibrate: true,
-        });
-
-        await Notifications.setNotificationChannelAsync('weather_warnings', {
-          name: 'Cảnh báo thời tiết',
-          importance: Notifications.AndroidImportance.DEFAULT,
-          vibrationPattern: [0, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-          enableVibrate: true,
-        });
-
-        await Notifications.setNotificationChannelAsync('shift_rotation', {
-          name: 'Xoay ca làm việc',
-          importance: Notifications.AndroidImportance.DEFAULT,
-          vibrationPattern: [0, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-          enableVibrate: true,
-        });
+      if (Platform.OS === 'android' && hasPermission) {
+        await this.setupNotificationChannels();
       }
 
+      this.isAvailable = hasPermission;
+      this.status = {
+        isSupported: hasPermission,
+        isExpoGo,
+        hasPermission,
+        platform: Platform.OS,
+        message: hasPermission
+          ? 'Notifications hoạt động bình thường'
+          : 'Cần cấp quyền notification để sử dụng tính năng nhắc nhở',
+        canSchedule: hasPermission
+      };
+
       this.isInitialized = true;
+
+      if (hasPermission) {
+        console.log('✅ Workly: Notifications đã được khởi tạo thành công');
+      }
     } catch (error) {
       console.error('Error initializing notifications:', error);
       this.isAvailable = false;
-      console.warn('⚠️ Workly: Notifications không khả dụng. Một số tính năng sẽ bị hạn chế.');
+      this.status = {
+        isSupported: false,
+        isExpoGo: isRunningInExpoGo(),
+        hasPermission: false,
+        platform: Platform.OS,
+        message: `Lỗi khởi tạo notifications: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        canSchedule: false
+      };
+      this.isInitialized = true;
     }
+  }
+
+  private async setupNotificationChannels(): Promise<void> {
+    if (!isNotificationsAvailable()) return;
+
+    try {
+      await Notifications.setNotificationChannelAsync('shift_reminders', {
+        name: 'Nhắc nhở ca làm việc',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+      });
+
+      await Notifications.setNotificationChannelAsync('note_reminders', {
+        name: 'Nhắc nhở ghi chú',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+      });
+
+      await Notifications.setNotificationChannelAsync('weather_warnings', {
+        name: 'Cảnh báo thời tiết',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250],
+        lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+      });
+
+      await Notifications.setNotificationChannelAsync('shift_rotation', {
+        name: 'Xoay ca làm việc',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250],
+        lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+      });
+    } catch (error) {
+      console.error('Error setting up notification channels:', error);
+    }
+  }
+
+  // Getter cho notification status
+  getNotificationStatus(): NotificationStatus | null {
+    return this.status;
+  }
+
+  // Kiểm tra xem có thể lập lịch notifications không
+  canScheduleNotifications(): boolean {
+    return this.isAvailable && this.status?.canSchedule === true;
+  }
+
+  // Hiển thị thông báo fallback khi notifications không khả dụng
+  private showFallbackAlert(title: string, message: string): void {
+    Alert.alert(
+      `📱 ${title}`,
+      `${message}\n\n💡 Để sử dụng đầy đủ tính năng nhắc nhở, hãy tạo development build hoặc build production.`,
+      [{ text: 'Đã hiểu', style: 'default' }]
+    );
   }
 
   async scheduleShiftReminders(shift: Shift): Promise<void> {
     try {
       await this.initialize();
 
-      if (!this.isAvailable) {
+      if (!this.canScheduleNotifications()) {
         console.log('📱 Workly: Notifications không khả dụng, bỏ qua lập lịch nhắc nhở ca làm việc');
+        // Hiển thị thông báo fallback cho người dùng
+        if (this.status?.isExpoGo) {
+          this.showFallbackAlert(
+            'Nhắc nhở ca làm việc',
+            'Tính năng nhắc nhở ca làm việc sẽ được kích hoạt khi bạn sử dụng development build.'
+          );
+        }
         return;
       }
 
@@ -224,7 +345,7 @@ class NotificationService {
 
   async cancelShiftReminders(): Promise<void> {
     try {
-      if (!this.isAvailable) return;
+      if (!this.canScheduleNotifications()) return;
 
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const shiftNotifications = scheduledNotifications.filter(
@@ -245,7 +366,7 @@ class NotificationService {
   // Hủy notification cụ thể theo loại và shift ID
   async cancelSpecificReminder(type: 'departure' | 'checkin' | 'checkout', shiftId: string): Promise<void> {
     try {
-      if (!this.isAvailable) return;
+      if (!this.canScheduleNotifications()) return;
 
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const specificNotifications = scheduledNotifications.filter(
@@ -265,8 +386,15 @@ class NotificationService {
     try {
       await this.initialize();
 
-      if (!this.isAvailable) {
+      if (!this.canScheduleNotifications()) {
         console.log('📱 Workly: Notifications không khả dụng, bỏ qua lập lịch nhắc nhở ghi chú');
+        // Hiển thị thông báo fallback cho người dùng
+        if (this.status?.isExpoGo) {
+          this.showFallbackAlert(
+            'Nhắc nhở ghi chú',
+            'Tính năng nhắc nhở ghi chú sẽ được kích hoạt khi bạn sử dụng development build.'
+          );
+        }
         return;
       }
 
@@ -301,7 +429,7 @@ class NotificationService {
 
   async cancelNoteReminder(noteId: string): Promise<void> {
     try {
-      if (!this.isAvailable) return;
+      if (!this.canScheduleNotifications()) return;
       await Notifications.cancelScheduledNotificationAsync(`note_${noteId}`);
     } catch (error) {
       console.error('Error canceling note reminder:', error);
@@ -311,6 +439,11 @@ class NotificationService {
   async scheduleWeatherWarning(message: string, location: string): Promise<void> {
     try {
       await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        console.log('📱 Workly: Notifications không khả dụng, bỏ qua cảnh báo thời tiết');
+        return;
+      }
 
       await Notifications.scheduleNotificationAsync({
         identifier: `weather_${Date.now()}`,
@@ -334,6 +467,11 @@ class NotificationService {
     try {
       await this.initialize();
 
+      if (!this.canScheduleNotifications()) {
+        console.log('📱 Workly: Notifications không khả dụng, bỏ qua thông báo xoay ca');
+        return;
+      }
+
       await Notifications.scheduleNotificationAsync({
         identifier: `rotation_${Date.now()}`,
         content: {
@@ -356,6 +494,11 @@ class NotificationService {
   async scheduleWeeklyShiftReminder(reminderDate: Date): Promise<void> {
     try {
       await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        console.log('📱 Workly: Notifications không khả dụng, bỏ qua nhắc nhở hàng tuần');
+        return;
+      }
 
       // Cancel existing weekly reminders
       await this.cancelWeeklyReminders();
@@ -382,6 +525,8 @@ class NotificationService {
 
   async cancelWeeklyReminders(): Promise<void> {
     try {
+      if (!this.canScheduleNotifications()) return;
+
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
       const weeklyReminders = scheduledNotifications.filter(
         notification => notification.identifier.startsWith('weekly_reminder_')
@@ -398,6 +543,11 @@ class NotificationService {
   async showAlarmNotification(alarmData: AlarmData): Promise<void> {
     try {
       await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        console.log('📱 Workly: Notifications không khả dụng, bỏ qua alarm notification');
+        return;
+      }
 
       await Notifications.scheduleNotificationAsync({
         identifier: `alarm_${alarmData.id}`,
@@ -425,8 +575,9 @@ class NotificationService {
     return { hours, minutes };
   }
 
-  async getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
+  async getAllScheduledNotifications(): Promise<any[]> {
     try {
+      if (!this.canScheduleNotifications()) return [];
       return await Notifications.getAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error getting scheduled notifications:', error);
@@ -436,66 +587,54 @@ class NotificationService {
 
   async cancelAllNotifications(): Promise<void> {
     try {
+      if (!this.canScheduleNotifications()) return;
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error canceling all notifications:', error);
     }
   }
 
-  // Add notification response listener
-  addNotificationResponseListener(listener: (response: Notifications.NotificationResponse) => void): Notifications.Subscription {
-    return Notifications.addNotificationResponseReceivedListener(listener);
+  // Add notification response listener với safe check
+  addNotificationResponseListener(listener: (response: any) => void): any {
+    if (!isNotificationsAvailable()) {
+      console.warn('⚠️ Workly: Không thể thêm notification response listener - notifications không khả dụng');
+      return { remove: () => {} }; // Return dummy subscription
+    }
+
+    try {
+      return Notifications.addNotificationResponseReceivedListener(listener);
+    } catch (error) {
+      console.error('Error adding notification response listener:', error);
+      return { remove: () => {} };
+    }
   }
 
-  // Add notification received listener
-  addNotificationReceivedListener(listener: (notification: Notifications.Notification) => void): Notifications.Subscription {
-    return Notifications.addNotificationReceivedListener(listener);
+  // Add notification received listener với safe check
+  addNotificationReceivedListener(listener: (notification: any) => void): any {
+    if (!isNotificationsAvailable()) {
+      console.warn('⚠️ Workly: Không thể thêm notification received listener - notifications không khả dụng');
+      return { remove: () => {} }; // Return dummy subscription
+    }
+
+    try {
+      return Notifications.addNotificationReceivedListener(listener);
+    } catch (error) {
+      console.error('Error adding notification received listener:', error);
+      return { remove: () => {} };
+    }
   }
 
-  // Check if notifications are fully supported
-  async checkNotificationSupport(): Promise<{
-    isSupported: boolean;
-    isExpoGo: boolean;
-    hasPermission: boolean;
-    platform: string;
-    message: string;
-  }> {
+  // Check if notifications are fully supported - Cập nhật để sử dụng status đã có
+  async checkNotificationSupport(): Promise<NotificationStatus> {
     await this.initialize();
 
-    if (!this.isAvailable) {
-      return {
-        isSupported: false,
-        isExpoGo: false,
-        hasPermission: false,
-        platform: Platform.OS,
-        message: 'Notifications không khả dụng trong môi trường này.'
-      };
-    }
-
-    const isExpoGoRunning = isRunningInExpoGo();
-    const platform = Platform.OS;
-    const { status } = await Notifications.getPermissionsAsync();
-    const hasPermission = status === 'granted';
-
-    let isSupported = true;
-    let message = 'Notifications được hỗ trợ đầy đủ';
-
-    if (isExpoGoRunning && platform === 'android') {
-      isSupported = false;
-      message = 'Push notifications không được hỗ trợ trong Expo Go trên Android. Sử dụng development build để có đầy đủ tính năng.';
-    } else if (isExpoGoRunning) {
-      message = 'Một số tính năng notification có thể bị hạn chế trong Expo Go.';
-    } else if (!hasPermission) {
-      isSupported = false;
-      message = 'Cần cấp quyền notification để sử dụng tính năng nhắc nhở.';
-    }
-
-    return {
-      isSupported,
-      isExpoGo: isExpoGoRunning,
-      hasPermission,
-      platform,
-      message
+    return this.status || {
+      isSupported: false,
+      isExpoGo: isRunningInExpoGo(),
+      hasPermission: false,
+      platform: Platform.OS,
+      message: 'Chưa khởi tạo notification service',
+      canSchedule: false
     };
   }
 
@@ -503,6 +642,10 @@ class NotificationService {
   async testNotification(): Promise<void> {
     try {
       await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        throw new Error('Notifications không khả dụng trong môi trường này. Sử dụng development build để test notifications.');
+      }
 
       await Notifications.scheduleNotificationAsync({
         identifier: 'test_notification',
@@ -517,6 +660,56 @@ class NotificationService {
       console.error('Error testing notification:', error);
       throw error;
     }
+  }
+
+  // Phương thức mới để hiển thị thông tin chi tiết về trạng thái notifications
+  async getDetailedStatus(): Promise<{
+    status: NotificationStatus;
+    scheduledCount: number;
+    environment: string;
+    recommendations: string[];
+  }> {
+    await this.initialize();
+
+    const scheduledNotifications = await this.getAllScheduledNotifications();
+    const scheduledCount = scheduledNotifications.length;
+
+    let environment = 'Unknown';
+    if (isRunningInExpoGo()) {
+      environment = 'Expo Go';
+    } else if (Constants?.executionEnvironment === 'standalone') {
+      environment = 'Production Build';
+    } else if (Constants?.executionEnvironment === 'bare') {
+      environment = 'Development Build';
+    }
+
+    const recommendations: string[] = [];
+
+    if (this.status?.isExpoGo && Platform.OS === 'android') {
+      recommendations.push('Tạo development build để sử dụng đầy đủ tính năng notifications');
+      recommendations.push('Chạy lệnh: npx expo install --fix để cập nhật dependencies');
+      recommendations.push('Sử dụng: eas build --profile development --platform android');
+    } else if (!this.status?.hasPermission) {
+      recommendations.push('Cấp quyền notifications trong Settings của thiết bị');
+      recommendations.push('Khởi động lại ứng dụng sau khi cấp quyền');
+    } else if (this.status?.isSupported) {
+      recommendations.push('Notifications hoạt động bình thường');
+      recommendations.push('Có thể test bằng cách tạo ghi chú với nhắc nhở');
+    }
+
+    return {
+      status: this.status || {
+        isSupported: false,
+        isExpoGo: false,
+        hasPermission: false,
+        platform: Platform.OS,
+        message: 'Chưa khởi tạo',
+        canSchedule: false
+      },
+      scheduledCount,
+      environment,
+      recommendations
+    };
   }
 }
 

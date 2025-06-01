@@ -7,10 +7,10 @@ import { Shift } from '../types';
 interface TimeEditModalProps {
   visible: boolean;
   onDismiss: () => void;
-  currentCheckInTime?: string;
-  currentCheckOutTime?: string;
+  currentCheckInTime?: string; // HH:MM format
+  currentCheckOutTime?: string; // HH:MM format
   shift: Shift | null;
-  onSave: (checkInTime: string, checkOutTime: string) => Promise<void>;
+  onSave: (checkInTime: string, checkOutTime: string) => void; // Returns HH:MM format
 }
 
 export function TimeEditModal({
@@ -33,9 +33,9 @@ export function TimeEditModal({
   // Khởi tạo giá trị mặc định khi modal mở
   useEffect(() => {
     if (visible) {
-      // Nếu có giờ hiện tại, sử dụng chúng
+      // Nếu có giờ hiện tại (đã ở format HH:MM), sử dụng chúng
       if (currentCheckInTime) {
-        setCheckInTime(format(parseISO(currentCheckInTime), 'HH:mm'));
+        setCheckInTime(currentCheckInTime);
       } else if (shift) {
         // Nếu không có, sử dụng giờ ca làm việc
         setCheckInTime(shift.startTime);
@@ -44,7 +44,7 @@ export function TimeEditModal({
       }
 
       if (currentCheckOutTime) {
-        setCheckOutTime(format(parseISO(currentCheckOutTime), 'HH:mm'));
+        setCheckOutTime(currentCheckOutTime);
       } else if (shift) {
         setCheckOutTime(shift.officeEndTime);
       } else {
@@ -160,13 +160,13 @@ export function TimeEditModal({
             {
               text: 'Tiếp tục',
               onPress: () => {
-                onSave(checkInDate.toISOString(), checkOutDate.toISOString());
+                onSave(checkInTime, checkOutTime); // Return HH:MM format
               },
             },
           ]
         );
       } else {
-        await onSave(checkInDate.toISOString(), checkOutDate.toISOString());
+        onSave(checkInTime, checkOutTime); // Return HH:MM format
       }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể lưu thời gian chấm công');

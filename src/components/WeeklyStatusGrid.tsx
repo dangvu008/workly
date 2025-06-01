@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Text, Card, useTheme, Menu, Button } from 'react-native-paper';
+import { Text, Card, useTheme, Menu } from 'react-native-paper';
 import { format, addDays, startOfWeek, isFuture, isToday, isPast } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
 import { DailyWorkStatus } from '../types';

@@ -42,7 +42,6 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshingData, setIsRefreshingData] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
 
 
@@ -345,7 +344,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   // Show loading spinner when app is loading
-  if (state.isLoading || isLoading) {
+  if (state.isLoading) {
     return (
       <SafeAreaView style={[commonStyles.container, { backgroundColor: theme.colors.background }]}>
         <LoadingSpinner message="Đang tải dữ liệu..." />

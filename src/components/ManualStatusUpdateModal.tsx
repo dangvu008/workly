@@ -39,21 +39,11 @@ export function ManualStatusUpdateModal({
   const [selectedAttendanceAction, setSelectedAttendanceAction] = useState<string>('');
   const [selectedLeaveStatus, setSelectedLeaveStatus] = useState<DailyWorkStatus['status'] | ''>('');
 
-  // Debug logging
-  console.log('🔘 ManualStatusUpdateModal: Render with props:', {
-    visible,
-    date,
-    currentStatus: currentStatus?.status,
-    shift: shift?.name
-  });
-
   if (!visible) {
-    console.log('🔘 ManualStatusUpdateModal: Not visible, returning null');
     return null;
   }
 
   if (!date) {
-    console.log('🔘 ManualStatusUpdateModal: No date provided, returning null');
     return null;
   }
 

@@ -21,11 +21,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const [manualUpdateModalVisible, setManualUpdateModalVisible] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔘 WeeklyStatusGrid: manualUpdateModalVisible changed to:', manualUpdateModalVisible);
-    console.log('🔘 WeeklyStatusGrid: selectedDate:', selectedDate);
-  }, [manualUpdateModalVisible, selectedDate]);
+
 
 
 
@@ -71,9 +67,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const handleDayPress = React.useCallback((date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
 
-    console.log('🔘 WeeklyStatusGrid: Day pressed:', dateString);
-    console.log('🔘 WeeklyStatusGrid: Setting modal visible to true');
-
     setSelectedDate(dateString);
     setManualUpdateModalVisible(true);
     onDayPress?.(dateString);
@@ -91,7 +84,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   // Handlers cho ManualStatusUpdateModal
   const handleStatusUpdate = async (status: DailyWorkStatus['status']) => {
     try {
-      console.log('🔘 WeeklyStatusGrid: Updating status to:', status, 'for date:', selectedDate);
       await workManager.setManualWorkStatus(selectedDate, status);
       await actions.refreshWeeklyStatus();
 
@@ -109,7 +101,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleTimeEdit = async (checkInTime: string, checkOutTime: string) => {
     try {
-      console.log('🔘 WeeklyStatusGrid: Editing time:', { checkInTime, checkOutTime, selectedDate });
       await workManager.updateAttendanceTime(selectedDate, checkInTime, checkOutTime);
       await actions.refreshWeeklyStatus();
 
@@ -126,7 +117,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleRecalculateFromLogs = async () => {
     try {
-      console.log('🔘 WeeklyStatusGrid: Recalculating from logs for date:', selectedDate);
       await workManager.recalculateFromAttendanceLogs(selectedDate);
       await actions.refreshWeeklyStatus();
 
@@ -143,7 +133,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const handleClearManualStatus = async () => {
     try {
-      console.log('🔘 WeeklyStatusGrid: Clearing manual status for date:', selectedDate);
       await workManager.clearManualStatusAndRecalculate(selectedDate);
       await actions.refreshWeeklyStatus();
 
@@ -329,10 +318,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       {/* Manual Status Update Modal */}
       <ManualStatusUpdateModal
         visible={manualUpdateModalVisible}
-        onDismiss={() => {
-          console.log('🔘 WeeklyStatusGrid: Modal dismissed');
-          setManualUpdateModalVisible(false);
-        }}
+        onDismiss={() => setManualUpdateModalVisible(false)}
         date={selectedDate}
         currentStatus={selectedDate ? state.weeklyStatus[selectedDate] || null : null}
         shift={state.activeShift}

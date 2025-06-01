@@ -3,6 +3,7 @@ import { View, StyleSheet, Alert, Vibration } from 'react-native';
 import { Button, Text, IconButton, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
 import { BUTTON_STATES } from '../constants';
 import { storageService } from '../services/storage';
@@ -232,13 +233,29 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('🔄 MultiFunctionButton: Starting manual reset');
+
+              // Thực hiện reset
               await actions.resetDailyStatus();
 
-              // Refresh logs status after reset
-              await checkTodayLogs();
+              // Đợi một chút để đảm bảo reset hoàn tất
+              await new Promise(resolve => setTimeout(resolve, 200));
 
+              console.log('🔄 MultiFunctionButton: Refreshing all states after reset');
+
+              // Refresh tất cả state liên quan - tuần tự để đảm bảo
+              await checkTodayLogs();
+              await actions.refreshButtonState();
+              await actions.refreshWeeklyStatus();
+              await actions.refreshTimeDisplayInfo();
+
+              // Đợi thêm một chút để UI cập nhật
+              await new Promise(resolve => setTimeout(resolve, 100));
+
+              console.log(`✅ MultiFunctionButton: Manual reset completed, current button state: ${state.currentButtonState}`);
               Alert.alert('Thành công', 'Đã reset trạng thái chấm công hôm nay.');
             } catch (error) {
+              console.error('❌ MultiFunctionButton: Reset failed:', error);
               Alert.alert('Lỗi', 'Không thể reset trạng thái. Vui lòng thử lại.');
             }
           }
@@ -286,12 +303,12 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
             ]}
           >
             <View style={styles.buttonInner}>
-              <Text style={[
-                styles.buttonIcon,
-                { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
-              ]}>
-                {buttonConfig.icon}
-              </Text>
+              <MaterialCommunityIcons
+                name={buttonConfig.icon as any}
+                size={SCREEN_DIMENSIONS.isSmallScreen ? 24 : 28}
+                color={isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF'}
+                style={styles.buttonIcon}
+              />
               <Text style={[
                 styles.buttonLabel,
                 { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
@@ -334,8 +351,9 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           }}
           style={styles.punchButton}
           contentStyle={styles.punchButtonContent}
+          icon="pencil"
         >
-          📝 Ký Công
+          Ký Công
         </Button>
       )}
 
@@ -386,7 +404,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   buttonIcon: {
-    fontSize: SCREEN_DIMENSIONS.isSmallScreen ? 20 : 24,
     marginBottom: SPACING.xs,
   },
   buttonLabel: {
@@ -479,12 +496,12 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
           ]}
         >
           <View style={styles.buttonInner}>
-            <Text style={[
-              styles.buttonIcon,
-              { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
-            ]}>
-              {buttonConfig.icon}
-            </Text>
+            <MaterialCommunityIcons
+              name={buttonConfig.icon as any}
+              size={SCREEN_DIMENSIONS.isSmallScreen ? 24 : 28}
+              color={isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF'}
+              style={styles.buttonIcon}
+            />
             <Text style={[
               styles.buttonLabel,
               { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }

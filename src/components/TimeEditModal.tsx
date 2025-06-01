@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { Modal, Text, Button, useTheme, IconButton, TextInput } from 'react-native-paper';
+import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
+import { Modal, Text, Button, useTheme, IconButton, Card } from 'react-native-paper';
 import { format, parseISO, isValid, addMinutes, differenceInMinutes } from 'date-fns';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Shift } from '../types';
+import { SPACING, BORDER_RADIUS } from '../constants/themes';
 
 interface TimeEditModalProps {
   visible: boolean;
@@ -22,107 +25,97 @@ export function TimeEditModal({
   onSave,
 }: TimeEditModalProps) {
   const theme = useTheme();
-  const [checkInTime, setCheckInTime] = useState('');
-  const [checkOutTime, setCheckOutTime] = useState('');
+
+  // State cho time picker
+  const [checkInDate, setCheckInDate] = useState(new Date());
+  const [checkOutDate, setCheckOutDate] = useState(new Date());
+  const [showCheckInPicker, setShowCheckInPicker] = useState(false);
+  const [showCheckOutPicker, setShowCheckOutPicker] = useState(false);
+
   const [errors, setErrors] = useState<{
     checkIn?: string;
     checkOut?: string;
     general?: string;
   }>({});
 
+  // Helper function để chuyển đổi HH:MM string thành Date object
+  const timeStringToDate = (timeString: string): Date => {
+    const today = new Date();
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+    return date;
+  };
+
+  // Helper function để chuyển đổi Date object thành HH:MM string
+  const dateToTimeString = (date: Date): string => {
+    return format(date, 'HH:mm');
+  };
+
   // Khởi tạo giá trị mặc định khi modal mở
   useEffect(() => {
     if (visible) {
-      // Nếu có giờ hiện tại (đã ở format HH:MM), sử dụng chúng
+      // Khởi tạo giờ check-in
+      let checkInTimeString = '';
       if (currentCheckInTime) {
-        setCheckInTime(currentCheckInTime);
+        checkInTimeString = currentCheckInTime;
       } else if (shift) {
-        // Nếu không có, sử dụng giờ ca làm việc
-        setCheckInTime(shift.startTime);
+        checkInTimeString = shift.startTime;
       } else {
-        setCheckInTime('08:00');
+        checkInTimeString = '08:00';
       }
+      setCheckInDate(timeStringToDate(checkInTimeString));
 
+      // Khởi tạo giờ check-out
+      let checkOutTimeString = '';
       if (currentCheckOutTime) {
-        setCheckOutTime(currentCheckOutTime);
+        checkOutTimeString = currentCheckOutTime;
       } else if (shift) {
-        setCheckOutTime(shift.officeEndTime);
+        checkOutTimeString = shift.officeEndTime;
       } else {
-        setCheckOutTime('17:00');
+        checkOutTimeString = '17:00';
       }
+      setCheckOutDate(timeStringToDate(checkOutTimeString));
 
       setErrors({});
     }
   }, [visible, currentCheckInTime, currentCheckOutTime, shift]);
 
-  const validateTime = (timeString: string): boolean => {
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    return timeRegex.test(timeString);
-  };
 
-  const parseTimeToDate = (timeString: string, baseDate: Date = new Date()): Date | null => {
-    if (!validateTime(timeString)) return null;
-    
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const date = new Date(baseDate);
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  };
 
   const validateInputs = (): boolean => {
     const newErrors: typeof errors = {};
 
-    // Validate check-in time
-    if (!checkInTime.trim()) {
-      newErrors.checkIn = 'Vui lòng nhập giờ vào';
-    } else if (!validateTime(checkInTime)) {
-      newErrors.checkIn = 'Định dạng giờ không hợp lệ (HH:MM)';
+    // Validate time logic sử dụng Date objects
+    let adjustedCheckOutDate = new Date(checkOutDate);
+
+    // Xử lý ca đêm - nếu giờ ra nhỏ hơn giờ vào, coi như ngày hôm sau
+    if (shift?.isNightShift && checkOutDate <= checkInDate) {
+      adjustedCheckOutDate = new Date(checkOutDate);
+      adjustedCheckOutDate.setDate(adjustedCheckOutDate.getDate() + 1);
     }
 
-    // Validate check-out time
-    if (!checkOutTime.trim()) {
-      newErrors.checkOut = 'Vui lòng nhập giờ ra';
-    } else if (!validateTime(checkOutTime)) {
-      newErrors.checkOut = 'Định dạng giờ không hợp lệ (HH:MM)';
+    // Kiểm tra thứ tự thời gian cho ca thường
+    if (!shift?.isNightShift && checkOutDate <= checkInDate) {
+      newErrors.general = 'Giờ ra phải sau giờ vào';
+    } else {
+      const workDuration = differenceInMinutes(adjustedCheckOutDate, checkInDate);
+      if (workDuration > 24 * 60) {
+        newErrors.general = 'Thời gian làm việc không thể vượt quá 24 giờ';
+      } else if (workDuration < 30) {
+        newErrors.general = 'Thời gian làm việc tối thiểu là 30 phút';
+      }
     }
 
-    // Validate time logic
-    if (!newErrors.checkIn && !newErrors.checkOut) {
-      const checkInDate = parseTimeToDate(checkInTime);
-      const checkOutDate = parseTimeToDate(checkOutTime);
+    // Cảnh báo nếu giờ quá lệch so với ca chuẩn
+    if (shift && !newErrors.general) {
+      const shiftStartTime = timeStringToDate(shift.startTime);
+      const shiftEndTime = timeStringToDate(shift.officeEndTime);
 
-      if (checkInDate && checkOutDate) {
-        // Xử lý ca đêm (check-out có thể là ngày hôm sau)
-        if (shift?.isNightShift && checkOutDate <= checkInDate) {
-          // Thêm 1 ngày cho check-out time
-          checkOutDate.setDate(checkOutDate.getDate() + 1);
-        }
+      const checkInDiff = Math.abs(differenceInMinutes(checkInDate, shiftStartTime));
+      const checkOutDiff = Math.abs(differenceInMinutes(adjustedCheckOutDate, shiftEndTime));
 
-        if (checkOutDate <= checkInDate && !shift?.isNightShift) {
-          newErrors.general = 'Giờ ra phải sau giờ vào';
-        } else {
-          const workDuration = differenceInMinutes(checkOutDate, checkInDate);
-          if (workDuration > 24 * 60) {
-            newErrors.general = 'Thời gian làm việc không thể vượt quá 24 giờ';
-          } else if (workDuration < 30) {
-            newErrors.general = 'Thời gian làm việc tối thiểu là 30 phút';
-          }
-        }
-
-        // Cảnh báo nếu giờ quá lệch so với ca chuẩn
-        if (shift && !newErrors.general) {
-          const shiftStartTime = parseTimeToDate(shift.startTime);
-          const shiftEndTime = parseTimeToDate(shift.officeEndTime);
-          
-          if (shiftStartTime && shiftEndTime) {
-            const checkInDiff = Math.abs(differenceInMinutes(checkInDate, shiftStartTime));
-            const checkOutDiff = Math.abs(differenceInMinutes(checkOutDate, shiftEndTime));
-            
-            if (checkInDiff > 120 || checkOutDiff > 120) {
-              newErrors.general = 'Cảnh báo: Giờ chấm công lệch nhiều so với ca làm việc chuẩn';
-            }
-          }
-        }
+      if (checkInDiff > 120 || checkOutDiff > 120) {
+        newErrors.general = 'Cảnh báo: Giờ chấm công lệch nhiều so với ca làm việc chuẩn';
       }
     }
 
@@ -136,19 +129,9 @@ export function TimeEditModal({
     }
 
     try {
-      const today = new Date();
-      const checkInDate = parseTimeToDate(checkInTime, today);
-      const checkOutDate = parseTimeToDate(checkOutTime, today);
-
-      if (!checkInDate || !checkOutDate) {
-        Alert.alert('Lỗi', 'Không thể xử lý thời gian đã nhập');
-        return;
-      }
-
-      // Xử lý ca đêm
-      if (shift?.isNightShift && checkOutDate <= checkInDate) {
-        checkOutDate.setDate(checkOutDate.getDate() + 1);
-      }
+      // Chuyển đổi Date objects thành HH:MM strings
+      const checkInTimeString = dateToTimeString(checkInDate);
+      const checkOutTimeString = dateToTimeString(checkOutDate);
 
       // Xác nhận nếu có cảnh báo
       if (errors.general && errors.general.includes('Cảnh báo')) {
@@ -160,13 +143,13 @@ export function TimeEditModal({
             {
               text: 'Tiếp tục',
               onPress: () => {
-                onSave(checkInTime, checkOutTime); // Return HH:MM format
+                onSave(checkInTimeString, checkOutTimeString); // Return HH:MM format
               },
             },
           ]
         );
       } else {
-        onSave(checkInTime, checkOutTime); // Return HH:MM format
+        onSave(checkInTimeString, checkOutTimeString); // Return HH:MM format
       }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể lưu thời gian chấm công');
@@ -208,41 +191,79 @@ export function TimeEditModal({
       )}
 
       <View style={styles.content}>
-        {/* Check-in Time */}
-        <TextInput
-          label="Giờ vào"
-          value={checkInTime}
-          onChangeText={setCheckInTime}
-          placeholder="HH:MM"
-          keyboardType="numeric"
-          mode="outlined"
-          style={styles.input}
-          error={!!errors.checkIn}
-          left={<TextInput.Icon icon="login" />}
-        />
-        {errors.checkIn && (
-          <Text style={[styles.errorText, { color: theme.colors.error }]}>
-            {errors.checkIn}
+        {/* Check-in Time Picker */}
+        <View style={styles.timePickerContainer}>
+          <Text style={[styles.timeLabel, { color: theme.colors.onSurface }]}>
+            Giờ chấm công vào:
           </Text>
-        )}
+          <TouchableOpacity
+            style={[
+              styles.timePickerButton,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: errors.checkIn ? theme.colors.error : theme.colors.outline
+              }
+            ]}
+            onPress={() => setShowCheckInPicker(true)}
+          >
+            <MaterialCommunityIcons
+              name="login"
+              size={20}
+              color={theme.colors.onSurfaceVariant}
+              style={styles.timeIcon}
+            />
+            <Text style={[styles.timeText, { color: theme.colors.onSurface }]}>
+              {dateToTimeString(checkInDate)}
+            </Text>
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={20}
+              color={theme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+          {errors.checkIn && (
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>
+              {errors.checkIn}
+            </Text>
+          )}
+        </View>
 
-        {/* Check-out Time */}
-        <TextInput
-          label="Giờ ra"
-          value={checkOutTime}
-          onChangeText={setCheckOutTime}
-          placeholder="HH:MM"
-          keyboardType="numeric"
-          mode="outlined"
-          style={styles.input}
-          error={!!errors.checkOut}
-          left={<TextInput.Icon icon="logout" />}
-        />
-        {errors.checkOut && (
-          <Text style={[styles.errorText, { color: theme.colors.error }]}>
-            {errors.checkOut}
+        {/* Check-out Time Picker */}
+        <View style={styles.timePickerContainer}>
+          <Text style={[styles.timeLabel, { color: theme.colors.onSurface }]}>
+            Giờ chấm công ra:
           </Text>
-        )}
+          <TouchableOpacity
+            style={[
+              styles.timePickerButton,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: errors.checkOut ? theme.colors.error : theme.colors.outline
+              }
+            ]}
+            onPress={() => setShowCheckOutPicker(true)}
+          >
+            <MaterialCommunityIcons
+              name="logout"
+              size={20}
+              color={theme.colors.onSurfaceVariant}
+              style={styles.timeIcon}
+            />
+            <Text style={[styles.timeText, { color: theme.colors.onSurface }]}>
+              {dateToTimeString(checkOutDate)}
+            </Text>
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={20}
+              color={theme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+          {errors.checkOut && (
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>
+              {errors.checkOut}
+            </Text>
+          )}
+        </View>
 
         {/* General Error */}
         {errors.general && (
@@ -276,21 +297,52 @@ export function TimeEditModal({
           </Button>
         </View>
       </View>
+
+      {/* Time Pickers */}
+      {showCheckInPicker && (
+        <DateTimePicker
+          value={checkInDate}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, selectedDate) => {
+            setShowCheckInPicker(Platform.OS === 'ios');
+            if (selectedDate) {
+              setCheckInDate(selectedDate);
+            }
+          }}
+        />
+      )}
+
+      {showCheckOutPicker && (
+        <DateTimePicker
+          value={checkOutDate}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, selectedDate) => {
+            setShowCheckOutPicker(Platform.OS === 'ios');
+            if (selectedDate) {
+              setCheckOutDate(selectedDate);
+            }
+          }}
+        />
+      )}
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    margin: 20,
-    borderRadius: 12,
-    padding: 20,
+    margin: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   title: {
     fontSize: 18,
@@ -298,27 +350,47 @@ const styles = StyleSheet.create({
   },
   shiftInfo: {
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: SPACING.md,
     textAlign: 'center',
   },
   content: {
-    gap: 16,
+    gap: SPACING.md,
   },
-  input: {
-    marginBottom: 8,
+  timePickerContainer: {
+    marginBottom: SPACING.sm,
+  },
+  timeLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: SPACING.xs,
+  },
+  timePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    minHeight: 56,
+  },
+  timeIcon: {
+    marginRight: SPACING.sm,
+  },
+  timeText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
   },
   errorText: {
     fontSize: 12,
-    marginTop: -4,
-    marginBottom: 8,
+    marginTop: SPACING.xs,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: SPACING.md,
+    gap: SPACING.sm,
   },
   button: {
     flex: 1,
-    marginHorizontal: 8,
   },
 });

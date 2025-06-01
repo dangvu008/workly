@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, useTheme, Divider } from 'react-native-paper';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
 import { AttendanceLog } from '../types';
 import { BUTTON_STATES } from '../constants';
@@ -44,13 +45,13 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
 
   const getActionIcon = (type: AttendanceLog['type']): string => {
     const iconMap = {
-      go_work: '🚶‍♂️',
-      check_in: '📥',
-      punch: '✍️',
-      check_out: '📤',
-      complete: '✅',
+      go_work: 'walk',
+      check_in: 'login',
+      punch: 'pencil',
+      check_out: 'logout',
+      complete: 'check-circle',
     };
-    return iconMap[type] || '📝';
+    return iconMap[type] || 'pencil';
   };
 
   const getActionColor = (type: AttendanceLog['type']): string => {
@@ -93,12 +94,11 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
             <View key={`${log.type}-${log.time}-${index}`}>
               <View style={styles.logItem}>
                 <View style={styles.logIcon}>
-                  <Text style={[
-                    styles.iconText,
-                    { color: getActionColor(log.type) }
-                  ]}>
-                    {getActionIcon(log.type)}
-                  </Text>
+                  <MaterialCommunityIcons
+                    name={getActionIcon(log.type) as any}
+                    size={20}
+                    color={getActionColor(log.type)}
+                  />
                 </View>
                 
                 <View style={styles.logContent}>
@@ -168,9 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  iconText: {
-    fontSize: 18,
-  },
+
   logContent: {
     flex: 1,
   },

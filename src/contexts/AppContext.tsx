@@ -491,12 +491,23 @@ export function AppProvider({ children }: AppProviderProps) {
   const resetDailyStatus = async () => {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
+      console.log('🔄 AppContext: Starting reset daily status');
+
       await workManager.resetDailyStatus(today);
 
-      // Refresh state
-      await refreshButtonState();
-      await refreshWeeklyStatus();
+      console.log('🔄 AppContext: Reset completed, refreshing states');
+
+      // Force refresh button state immediately
+      const newButtonState = await workManager.getCurrentButtonState(today);
+      dispatch({ type: 'SET_BUTTON_STATE', payload: newButtonState });
+
+      // Clear today status
       dispatch({ type: 'SET_TODAY_STATUS', payload: null });
+
+      // Refresh other states
+      await refreshWeeklyStatus();
+
+      console.log(`✅ AppContext: Reset daily status completed, new button state: ${newButtonState}`);
     } catch (error) {
       console.error('Error resetting daily status:', error);
       throw error;
@@ -575,11 +586,22 @@ export function AppProvider({ children }: AppProviderProps) {
     if (!state.isLoading && state.activeShift) {
       interval = setInterval(async () => {
         try {
+          const today = format(new Date(), 'yyyy-MM-dd');
+
+          // Kiểm tra và thực hiện auto-reset nếu cần
+          const wasReset = await workManager.performAutoResetIfNeeded(today);
+
           // Batch updates to reduce re-renders
           await Promise.all([
             refreshTimeDisplayInfo(),
             refreshButtonState()
           ]);
+
+          // Nếu có auto-reset, refresh thêm weekly status
+          if (wasReset) {
+            await refreshWeeklyStatus();
+            dispatch({ type: 'SET_TODAY_STATUS', payload: null });
+          }
         } catch (error) {
           console.error('Error in periodic refresh:', error);
         }

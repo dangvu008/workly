@@ -3,6 +3,7 @@ import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Modal, Portal, Text, Button, useTheme, Menu, TouchableRipple } from 'react-native-paper';
 import { format, parseISO, isToday, isPast } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DailyWorkStatus, Shift } from '../types';
 import { WEEKLY_STATUS } from '../constants';
 import { TimeEditModal } from './TimeEditModal';
@@ -151,19 +152,19 @@ export function ManualStatusUpdateModal({
     } else {
       // Ngày quá khứ/hiện tại: đầy đủ options
       return [
-        { key: 'TINH_THEO_CHAM_CONG', icon: '🧮', text: 'Tính theo Chấm công', color: '#2196F3' },
+        { key: 'TINH_THEO_CHAM_CONG', ...WEEKLY_STATUS.TINH_THEO_CHAM_CONG },
         { key: 'DU_CONG', ...WEEKLY_STATUS.DU_CONG },
         { key: 'DI_MUON', ...WEEKLY_STATUS.DI_MUON },
         { key: 'VE_SOM', ...WEEKLY_STATUS.VE_SOM },
-        { key: 'DI_MUON_VE_SOM', icon: '⏰🏃‍♂️', text: 'Vào muộn & Ra sớm', color: '#FF5722' },
+        { key: 'DI_MUON_VE_SOM', ...WEEKLY_STATUS.DI_MUON_VE_SOM },
         { key: 'NGHI_PHEP', ...WEEKLY_STATUS.NGHI_PHEP },
         { key: 'NGHI_BENH', ...WEEKLY_STATUS.NGHI_BENH },
         { key: 'NGHI_LE', ...WEEKLY_STATUS.NGHI_LE },
         { key: 'VANG_MAT', ...WEEKLY_STATUS.VANG_MAT },
         { key: 'CONG_TAC', ...WEEKLY_STATUS.CONG_TAC },
-        { key: 'THIEU_LOG', icon: '❓', text: 'Thiếu Log', color: '#9E9E9E' },
+        { key: 'THIEU_LOG', ...WEEKLY_STATUS.THIEU_LOG },
         ...(currentStatus?.isManualOverride ? [
-          { key: 'XOA_TRANG_THAI_THU_CONG', icon: '🗑️', text: 'Xóa trạng thái thủ công', color: '#F44336' }
+          { key: 'XOA_TRANG_THAI_THU_CONG', ...WEEKLY_STATUS.XOA_TRANG_THAI_THU_CONG }
         ] : [])
       ];
     }
@@ -413,7 +414,8 @@ export function ManualStatusUpdateModal({
                 <Menu.Item
                   key={status.key}
                   onPress={() => handleStatusChange(status.key)}
-                  title={`${status.icon} ${status.text}`}
+                  title={status.text}
+                  leadingIcon={status.icon}
                 />
               ))}
             </Menu>

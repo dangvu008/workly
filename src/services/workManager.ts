@@ -28,8 +28,9 @@ class WorkManager {
       const activeShiftId = await storageService.getActiveShiftId();
       const shifts = await storageService.getShiftList();
       const activeShift = activeShiftId ? shifts.find((s: Shift) => s.id === activeShiftId) : null;
-      
+
       if (!activeShift) {
+        console.log('🔘 WorkManager: No active shift, returning go_work');
         return 'go_work';
       }
 
@@ -37,36 +38,32 @@ class WorkManager {
       const now = new Date();
       const currentTime = format(now, 'HH:mm');
 
+      console.log(`🔘 WorkManager: Getting button state for ${date} at ${currentTime}, logs count: ${logs.length}`);
+
       // Kiểm tra xem có phải ngày làm việc không
       const dayOfWeek = now.getDay();
       if (!activeShift.workDays.includes(dayOfWeek)) {
+        console.log(`🔘 WorkManager: Not a work day (${dayOfWeek}), returning completed_day`);
         return 'completed_day';
+      }
+
+      // QUAN TRỌNG: Nếu không có logs sau reset, luôn trả về go_work
+      if (logs.length === 0) {
+        console.log('🔘 WorkManager: No logs found, returning go_work');
+        return 'go_work';
       }
 
       // Kiểm tra auto reset logic - reset 1 giờ trước giờ khởi hành
-      const departureTime = activeShift.departureTime;
-      const [depHour, depMin] = departureTime.split(':').map(Number);
-      const resetHour = depHour - 1;
-      const resetTime = `${resetHour.toString().padStart(2, '0')}:${depMin.toString().padStart(2, '0')}`;
-      
-      if (currentTime < resetTime) {
-        return 'completed_day';
+      const isInResetWindow = this.isInResetWindow(activeShift, currentTime);
+      if (isInResetWindow) {
+        console.log('🔘 WorkManager: In reset window, returning go_work');
+        return 'go_work';
       }
 
       // Kiểm tra hide logic - ẩn 2 giờ sau giờ kết thúc ca
-      const endTime = activeShift.endTime;
-      const [endHour, endMin] = endTime.split(':').map(Number);
-      let hideHour = endHour + 2;
-      let hideDay = 0;
-      
-      if (hideHour >= 24) {
-        hideHour -= 24;
-        hideDay = 1;
-      }
-      
-      const hideTime = `${hideHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-      
-      if (hideDay === 0 && currentTime > hideTime) {
+      const shouldHide = this.shouldHideButton(activeShift, currentTime);
+      if (shouldHide) {
+        console.log('🔘 WorkManager: Should hide button, returning completed_day');
         return 'completed_day';
       }
 
@@ -76,36 +73,47 @@ class WorkManager {
       const hasCheckOut = logs.some(log => log.type === 'check_out');
       const hasComplete = logs.some(log => log.type === 'complete');
 
+      console.log(`🔘 WorkManager: Logs analysis - GoWork: ${hasGoWork}, CheckIn: ${hasCheckIn}, CheckOut: ${hasCheckOut}, Complete: ${hasComplete}`);
+
       if (hasComplete) {
+        console.log('🔘 WorkManager: Has complete log, returning completed_day');
         return 'completed_day';
       }
 
       if (settings.multiButtonMode === 'simple') {
-        return hasGoWork ? 'completed_day' : 'go_work';
+        const result = hasGoWork ? 'completed_day' : 'go_work';
+        console.log(`🔘 WorkManager: Simple mode, returning ${result}`);
+        return result;
       }
 
       // Full mode logic
       if (!hasGoWork) {
+        console.log('🔘 WorkManager: No go_work log, returning go_work');
         return 'go_work';
       }
 
       if (!hasCheckIn) {
         // Kiểm tra thời gian để quyết định awaiting hay check_in
         if (currentTime < activeShift.startTime) {
+          console.log('🔘 WorkManager: Before start time, returning awaiting_check_in');
           return 'awaiting_check_in';
         }
+        console.log('🔘 WorkManager: After start time, returning check_in');
         return 'check_in';
       }
 
       if (!hasCheckOut) {
         // Kiểm tra thời gian để quyết định working hay check_out
         if (currentTime < activeShift.endTime) {
+          console.log('🔘 WorkManager: Before end time, returning working');
           return 'working';
         }
+        console.log('🔘 WorkManager: After end time, returning check_out');
         return 'check_out';
       }
 
       // Có check_out rồi, chờ complete
+      console.log('🔘 WorkManager: Has check_out, returning complete');
       return 'complete';
 
     } catch (error) {
@@ -424,6 +432,94 @@ class WorkManager {
     } catch (error) {
       console.error('Error processing rapid press confirmation:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Kiểm tra xem hiện tại có trong thời gian reset window không
+   */
+  private isInResetWindow(shift: Shift, currentTime: string): boolean {
+    try {
+      // Tính toán thời gian reset (1 giờ trước departure time)
+      const [depHour, depMin] = shift.departureTime.split(':').map(Number);
+      let resetHour = depHour - 1;
+
+      // Xử lý trường hợp giờ âm (ví dụ: 00:30 -> 23:30 ngày hôm trước)
+      if (resetHour < 0) {
+        resetHour += 24;
+        // Nếu reset time là ngày hôm trước, check từ 00:00 đến departure time
+        return currentTime >= '00:00' && currentTime < shift.departureTime;
+      }
+
+      const resetTime = `${resetHour.toString().padStart(2, '0')}:${depMin.toString().padStart(2, '0')}`;
+
+      // Check trong khoảng reset time đến departure time
+      return currentTime >= resetTime && currentTime < shift.departureTime;
+
+    } catch (error) {
+      console.error('Error checking reset window:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Thực hiện auto reset nếu cần - được gọi từ bên ngoài
+   */
+  async performAutoResetIfNeeded(date: string): Promise<boolean> {
+    try {
+      const activeShiftId = await storageService.getActiveShiftId();
+      const shifts = await storageService.getShiftList();
+      const activeShift = activeShiftId ? shifts.find((s: Shift) => s.id === activeShiftId) : null;
+
+      if (!activeShift) {
+        return false;
+      }
+
+      const now = new Date();
+      const currentTime = format(now, 'HH:mm');
+      const logs = await storageService.getAttendanceLogsForDate(date);
+
+      // Kiểm tra xem có trong reset window và có logs cần reset không
+      const isInResetWindow = this.isInResetWindow(activeShift, currentTime);
+
+      if (isInResetWindow && logs.length > 0) {
+        console.log(`🔄 WorkManager: Auto-resetting daily status for ${date} at ${currentTime}`);
+        await this.resetDailyStatus(date);
+        return true;
+      }
+
+      return false;
+
+    } catch (error) {
+      console.error('Error performing auto reset:', error);
+      return false;
+    }
+  }
+
+
+
+  /**
+   * Kiểm tra xem có nên ẩn button không (2 giờ sau kết thúc ca)
+   */
+  private shouldHideButton(shift: Shift, currentTime: string): boolean {
+    try {
+      const [endHour, endMin] = shift.endTime.split(':').map(Number);
+      let hideHour = endHour + 2;
+
+      // Xử lý trường hợp vượt quá 24h
+      if (hideHour >= 24) {
+        hideHour -= 24;
+        // Nếu hide time là ngày hôm sau, không ẩn (vì chúng ta chỉ check trong ngày)
+        return false;
+      }
+
+      const hideTime = `${hideHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+
+      return currentTime > hideTime;
+
+    } catch (error) {
+      console.error('Error checking hide button:', error);
+      return false;
     }
   }
 

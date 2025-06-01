@@ -46,192 +46,192 @@ export const TIME_CONSTANTS = {
   MILLISECONDS_PER_DAY: 24 * 60 * 60 * 1000,
 } as const;
 
-// Button states and their display info - Icons đồng bộ với ứng dụng
+// Button states and their display info - Icons đồng bộ với Material Community Icons
 export const BUTTON_STATES = {
   go_work: {
     text: 'ĐI LÀM',
-    icon: '🏃‍♂️',
+    icon: 'run',
     color: '#4CAF50',
   },
   awaiting_check_in: {
     text: 'CHỜ CHECK-IN',
-    icon: '⏰',
+    icon: 'clock-outline',
     color: '#FF9800',
   },
   check_in: {
     text: 'CHẤM CÔNG VÀO',
-    icon: '📥',
+    icon: 'login',
     color: '#2196F3',
   },
   working: {
     text: 'ĐANG LÀM VIỆC',
-    icon: '💼',
+    icon: 'briefcase',
     color: '#9C27B0',
   },
   awaiting_check_out: {
     text: 'CHỜ CHECK-OUT',
-    icon: '⏰',
+    icon: 'clock-outline',
     color: '#FF9800',
   },
   check_out: {
     text: 'CHẤM CÔNG RA',
-    icon: '📤',
+    icon: 'logout',
     color: '#FF5722',
   },
   awaiting_complete: {
     text: 'CHỜ HOÀN TẤT',
-    icon: '⏳',
+    icon: 'timer-sand',
     color: '#795548',
   },
   complete: {
     text: 'HOÀN TẤT',
-    icon: '✅',
+    icon: 'check-circle',
     color: '#4CAF50',
   },
   completed_day: {
     text: 'ĐÃ HOÀN TẤT',
-    icon: '🎯',
+    icon: 'target',
     color: '#9E9E9E',
   },
 } as const;
 
-// Weekly status icons and colors
+// Weekly status icons and colors - Sử dụng Material Community Icons
 export const WEEKLY_STATUS = {
   completed: {
-    icon: '✅',
+    icon: 'check-circle',
     color: '#4CAF50',
     text: 'Hoàn thành',
   },
   late: {
-    icon: '❗',
+    icon: 'alert',
     color: '#FF9800',
     text: 'Đi muộn',
   },
   early: {
-    icon: '⏰',
+    icon: 'clock-fast',
     color: '#2196F3',
     text: 'Về sớm',
   },
   absent: {
-    icon: '❌',
+    icon: 'close-circle',
     color: '#F44336',
     text: 'Vắng mặt',
   },
   manual_present: {
-    icon: '📩',
+    icon: 'account-check',
     color: '#9C27B0',
     text: 'Có mặt (thủ công)',
   },
   manual_absent: {
-    icon: '🛌',
+    icon: 'sleep',
     color: '#607D8B',
     text: 'Nghỉ (thủ công)',
   },
   manual_holiday: {
-    icon: '🎌',
+    icon: 'flag',
     color: '#E91E63',
     text: 'Nghỉ lễ (thủ công)',
   },
   manual_completed: {
-    icon: '✅',
+    icon: 'check-circle',
     color: '#4CAF50',
     text: 'Hoàn thành (thủ công)',
   },
   manual_review: {
-    icon: 'RV',
+    icon: 'eye-check',
     color: '#FF5722',
     text: 'Cần xem lại (thủ công)',
   },
   pending: {
-    icon: '❓',
+    icon: 'help-circle',
     color: '#9E9E9E',
     text: 'Chưa xác định',
   },
   review: {
-    icon: 'RV',
+    icon: 'eye-check',
     color: '#FF5722',
     text: 'Cần xem lại',
   },
-  // Các trạng thái nghỉ mới theo yêu cầu
+  // Các trạng thái nghỉ mới theo yêu cầu - Sử dụng Material Community Icons
   NGHI_PHEP: {
-    icon: '🏖️',
+    icon: 'beach',
     color: '#00BCD4',
     text: 'Nghỉ Phép',
   },
   NGHI_BENH: {
-    icon: '🏥',
+    icon: 'hospital-box',
     color: '#FF9800',
     text: 'Nghỉ Bệnh',
   },
   NGHI_LE: {
-    icon: '🎌',
+    icon: 'flag',
     color: '#E91E63',
     text: 'Nghỉ Lễ',
   },
   VANG_MAT: {
-    icon: '❌',
+    icon: 'close-circle',
     color: '#F44336',
     text: 'Vắng Mặt',
   },
   CONG_TAC: {
-    icon: '✈️',
+    icon: 'airplane',
     color: '#673AB7',
     text: 'Công Tác',
   },
   DU_CONG: {
-    icon: '✅',
+    icon: 'check-circle',
     color: '#4CAF50',
     text: 'Đủ Công',
   },
   RV: {
-    icon: 'RV',
+    icon: 'eye-check',
     color: '#FF5722',
     text: 'Cần Xem Lại',
   },
-  // Các trạng thái từ DailyWorkStatusNew
+  // Các trạng thái từ DailyWorkStatusNew - Sử dụng Material Community Icons
   DI_MUON: {
-    icon: '⏰',
+    icon: 'clock-alert',
     color: '#FF9800',
     text: 'Đi Muộn',
   },
   VE_SOM: {
-    icon: '🏃‍♂️',
+    icon: 'run-fast',
     color: '#2196F3',
     text: 'Về Sớm',
   },
   DI_MUON_VE_SOM: {
-    icon: '⏰🏃‍♂️',
+    icon: 'alert-circle',
     color: '#FF5722',
     text: 'Vào muộn & Ra sớm',
   },
-  // Các trạng thái đặc biệt cho modal
+  // Các trạng thái đặc biệt cho modal - Sử dụng Material Community Icons
   TINH_THEO_CHAM_CONG: {
-    icon: '🧮',
+    icon: 'calculator',
     color: '#2196F3',
     text: 'Tính theo Chấm công',
   },
   THIEU_LOG: {
-    icon: '❓',
+    icon: 'help-circle',
     color: '#9E9E9E',
     text: 'Thiếu Log',
   },
   XOA_TRANG_THAI_THU_CONG: {
-    icon: '🗑️',
+    icon: 'delete',
     color: '#F44336',
     text: 'Xóa trạng thái thủ công',
   },
   CHUA_DI: {
-    icon: '🏠',
+    icon: 'home',
     color: '#9E9E9E',
     text: 'Chưa Đi',
   },
   DA_DI_CHUA_VAO: {
-    icon: '🚶‍♂️',
+    icon: 'walk',
     color: '#FFC107',
     text: 'Đã Đi Chưa Vào',
   },
   CHUA_RA: {
-    icon: '💼',
+    icon: 'briefcase',
     color: '#9C27B0',
     text: 'Chưa Ra',
   },

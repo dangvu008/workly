@@ -167,17 +167,17 @@ export class RapidPressDetectedException extends Error {
   }
 }
 
-// Weekly status icons
+// Weekly status icons - Sử dụng Material Community Icons
 export type WeeklyStatusIcon =
-  | '✅' // completed
-  | '❗' // late
-  | '⏰' // early
-  | '❌' // absent
-  | '📩' // manual_present
-  | '🛌' // manual_absent
-  | '🎌' // manual_holiday
-  | '❓' // pending/future
-  | 'RV'; // review needed
+  | 'check-circle' // completed
+  | 'alert' // late
+  | 'clock-fast' // early
+  | 'close-circle' // absent
+  | 'account-check' // manual_present
+  | 'sleep' // manual_absent
+  | 'flag' // manual_holiday
+  | 'help-circle' // pending/future
+  | 'eye-check'; // review needed
 
 export interface AlarmData {
   id: string;

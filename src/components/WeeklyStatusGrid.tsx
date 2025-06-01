@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, useTheme, Menu } from 'react-native-paper';
 import { format, addDays, startOfWeek, isFuture, isToday, isPast } from 'date-fns';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
 import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
 import { DailyWorkStatus } from '../types';
@@ -250,12 +251,12 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
           {dayNumber}
         </Text>
 
-        <Text style={[
-          styles.statusIcon,
-          { color: statusColor }
-        ]}>
-          {statusIcon}
-        </Text>
+        <MaterialCommunityIcons
+          name={statusIcon as any}
+          size={20}
+          color={statusColor}
+          style={styles.statusIcon}
+        />
 
         {canUpdate && (
           <Menu
@@ -305,40 +306,6 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
           <View style={styles.grid}>
             {weekDays.map((date, index) => renderDayItem(date, index))}
-          </View>
-
-
-
-          <View style={styles.legend}>
-            <Text style={[styles.legendTitle, { color: theme.colors.onSurface }]}>
-              Chú thích:
-            </Text>
-            <View style={styles.legendItems}>
-              <View style={styles.legendItem}>
-                <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.completed.color }]}>
-                  {WEEKLY_STATUS.completed.icon}
-                </Text>
-                <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
-                  Hoàn thành
-                </Text>
-              </View>
-              <View style={styles.legendItem}>
-                <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.late.color }]}>
-                  {WEEKLY_STATUS.late.icon}
-                </Text>
-                <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
-                  Đi muộn
-                </Text>
-              </View>
-              <View style={styles.legendItem}>
-                <Text style={[styles.legendIcon, { color: WEEKLY_STATUS.absent.color }]}>
-                  {WEEKLY_STATUS.absent.icon}
-                </Text>
-                <Text style={[styles.legendText, { color: theme.colors.onSurface }]}>
-                  Vắng mặt
-                </Text>
-              </View>
-            </View>
           </View>
         </Card.Content>
       </Card>
@@ -403,33 +370,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   statusIcon: {
-    fontSize: 16,
-  },
-  legend: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-    paddingTop: 12,
-  },
-  legendTitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  legendItems: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  legendIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  legendText: {
-    fontSize: 10,
+    alignSelf: 'center',
+    marginTop: 2,
   },
 });

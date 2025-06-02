@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Modal, Portal, Text, Button, useTheme, Menu, TouchableRipple } from 'react-native-paper';
-import { format, parseISO, isToday, isPast } from 'date-fns';
+import { Modal, Portal, Text, Button, useTheme, Menu, TouchableRipple, Card, Divider } from 'react-native-paper';
+import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { DailyWorkStatus, Shift } from '../types';
+import { DailyWorkStatus, Shift, AttendanceLog } from '../types';
 import { WEEKLY_STATUS } from '../constants';
 import { TimeEditModal } from './TimeEditModal';
+import { storageService } from '../services/storage';
 
 interface ManualStatusUpdateModalProps {
   visible: boolean;
@@ -56,6 +57,11 @@ export function ManualStatusUpdateModal({
   const [statusMenuVisible, setStatusMenuVisible] = useState(false);
   const [timeEditModalVisible, setTimeEditModalVisible] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+  // Dữ liệu được load khi modal mở
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
+  const [selectedShiftInfo, setSelectedShiftInfo] = useState<Shift | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   // ✅ Validation và xử lý date - sử dụng useMemo
   const isValidDate = React.useMemo(() => {
@@ -110,16 +116,45 @@ export function ManualStatusUpdateModal({
     }
   }, [date, isValidDate]);
 
+  // Hàm load dữ liệu đầy đủ cho ngày được chọn
+  const loadDataForSelectedDate = async () => {
+    if (!isValidDate || !dateObj) return;
+
+    try {
+      setIsLoadingData(true);
+
+      // Load attendance logs cho ngày được chọn
+      const logs = await storageService.getAttendanceLogsForDate(date);
+      setAttendanceLogs(logs);
+
+      console.log(`📊 ManualStatusUpdateModal: Loaded ${logs.length} attendance logs for ${date}:`, logs);
+
+    } catch (error) {
+      console.error('Error loading data for selected date:', error);
+      setAttendanceLogs([]);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
   // ✅ Khởi tạo dữ liệu khi modal mở - luôn gọi useEffect
   useEffect(() => {
     if (visible && isValidDate && dateObj) {
+      // Load dữ liệu đầy đủ
+      loadDataForSelectedDate();
+
       // Khởi tạo ca làm việc
       const initialShiftId = currentStatus?.appliedShiftIdForDay || shift?.id ||
                             (availableShifts.length > 0 ? availableShifts[0].id : '');
       setSelectedShiftId(initialShiftId);
 
-      // Khởi tạo trạng thái
-      setSelectedStatus(currentStatus?.status || '');
+      // Cập nhật thông tin ca làm việc được chọn
+      const shiftInfo = availableShifts.find(s => s.id === initialShiftId) || null;
+      setSelectedShiftInfo(shiftInfo);
+
+      // Khởi tạo trạng thái - đảm bảo luôn có giá trị hiển thị
+      const initialStatus = currentStatus?.status || '';
+      setSelectedStatus(initialStatus);
 
       // Khởi tạo giờ chấm công
       setCheckInTime(currentStatus?.vaoLogTime ?
@@ -331,6 +366,83 @@ export function ManualStatusUpdateModal({
     );
   };
 
+
+
+  // Render thông tin attendance logs thực tế
+  const renderAttendanceLogsInfo = () => {
+    if (isLoadingData) {
+      return (
+        <Card style={[styles.infoCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Card.Content>
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons
+                name="loading"
+                size={20}
+                color={theme.colors.onSurfaceVariant}
+              />
+              <Text style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>
+                Đang tải dữ liệu chấm công...
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+      );
+    }
+
+    if (attendanceLogs.length === 0) {
+      return (
+        <Card style={[styles.infoCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Card.Content>
+            <Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>
+              🕐 Dữ liệu chấm công thực tế
+            </Text>
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={20}
+                color={theme.colors.onSurfaceVariant}
+              />
+              <Text style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>
+                Chưa có dữ liệu chấm công cho ngày này
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+      );
+    }
+
+    const logTypeNames = {
+      go_work: 'Đi làm',
+      check_in: 'Chấm công vào',
+      check_out: 'Chấm công ra',
+      complete: 'Hoàn tất',
+      punch: 'Punch'
+    };
+
+    return (
+      <Card style={[styles.infoCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+        <Card.Content>
+          <Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>
+            🕐 Dữ liệu chấm công thực tế ({attendanceLogs.length} logs)
+          </Text>
+
+          {attendanceLogs.map((log, index) => (
+            <View key={index} style={styles.infoRow}>
+              <MaterialCommunityIcons
+                name="clock-check"
+                size={20}
+                color={theme.colors.primary}
+              />
+              <Text style={[styles.infoText, { color: theme.colors.onSurface }]}>
+                {logTypeNames[log.type] || log.type}: {format(parseISO(log.time), 'HH:mm:ss')}
+              </Text>
+            </View>
+          ))}
+        </Card.Content>
+      </Card>
+    );
+  };
+
   return (
     <Portal>
       <Modal
@@ -343,6 +455,9 @@ export function ManualStatusUpdateModal({
       >
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {renderHeader()}
+
+          {/* Thông tin attendance logs thực tế */}
+          {renderAttendanceLogsInfo()}
           
           {/* Ca làm việc áp dụng cho ngày này */}
           <View style={styles.fieldContainer}>
@@ -359,7 +474,7 @@ export function ManualStatusUpdateModal({
                 >
                   <View style={styles.dropdownContent}>
                     <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
-                      {availableShifts.find(s => s.id === selectedShiftId)?.name || 'Chọn ca làm việc'}
+                      {selectedShiftInfo?.name || availableShifts.find(s => s.id === selectedShiftId)?.name || 'Chọn ca làm việc'}
                     </Text>
                     <Text style={[styles.dropdownIcon, { color: theme.colors.onSurfaceVariant }]}>
                       ▼
@@ -373,6 +488,7 @@ export function ManualStatusUpdateModal({
                   key={shift.id}
                   onPress={() => {
                     setSelectedShiftId(shift.id);
+                    setSelectedShiftInfo(shift); // Cập nhật thông tin ca làm việc được chọn
                     setShiftMenuVisible(false);
                   }}
                   title={shift.name}
@@ -401,7 +517,28 @@ export function ManualStatusUpdateModal({
                 >
                   <View style={styles.dropdownContent}>
                     <Text style={[styles.dropdownText, { color: theme.colors.onSurface }]}>
-                      {getAvailableStatuses().find(s => s.key === selectedStatus)?.text || 'Chọn trạng thái'}
+                      {(() => {
+                        const status = getAvailableStatuses().find(s => s.key === selectedStatus);
+                        if (!status) {
+                          // Nếu không có trạng thái được chọn, hiển thị trạng thái hiện tại hoặc mặc định
+                          if (currentStatus?.status) {
+                            const currentStatusConfig = WEEKLY_STATUS[currentStatus.status];
+                            if (currentStatusConfig) {
+                              return typeof currentStatusConfig.text === 'string'
+                                ? currentStatusConfig.text
+                                : currentStatusConfig.text?.vi || currentStatus.status;
+                            }
+                          }
+                          return 'Chọn trạng thái';
+                        }
+
+                        // Xử lý text đa ngôn ngữ
+                        if (typeof status.text === 'string') {
+                          return status.text;
+                        } else {
+                          return status.text?.vi || status.key;
+                        }
+                      })()}
                     </Text>
                     <Text style={[styles.dropdownIcon, { color: theme.colors.onSurfaceVariant }]}>
                       ▼
@@ -414,7 +551,7 @@ export function ManualStatusUpdateModal({
                 <Menu.Item
                   key={status.key}
                   onPress={() => handleStatusChange(status.key)}
-                  title={status.text}
+                  title={typeof status.text === 'string' ? status.text : status.text?.vi || status.key}
                   leadingIcon={status.icon}
                 />
               ))}
@@ -571,6 +708,26 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
+    flex: 1,
+  },
+  // Styles cho info cards
+  infoCard: {
+    marginBottom: 16,
+    borderRadius: 8,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 14,
     flex: 1,
   },
 });

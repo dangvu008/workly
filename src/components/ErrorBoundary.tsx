@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
     
     this.setState({
       error,
-      errorInfo: errorInfo.componentStack,
+      errorInfo: errorInfo?.componentStack || '',
     });
 
     // Có thể gửi lỗi lên crash reporting service ở đây

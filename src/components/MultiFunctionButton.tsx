@@ -9,6 +9,7 @@ import { BUTTON_STATES } from '../constants';
 import { storageService } from '../services/storage';
 import { LoadingOverlay } from './LoadingOverlay';
 import { SPACING, BORDER_RADIUS, SCREEN_DIMENSIONS } from '../constants/themes';
+import { t } from '../i18n';
 
 interface MultiFunctionButtonProps {
   onPress?: () => void;
@@ -21,7 +22,36 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const [hasTodayLogs, setHasTodayLogs] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const buttonConfig = BUTTON_STATES[state.currentButtonState];
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
+  const buttonConfig = BUTTON_STATES[state.currentButtonState] || BUTTON_STATES.go_work;
+
+  // Function để lấy text cho button state với i18n
+  const getButtonStateText = (buttonState: string): string => {
+    switch (buttonState) {
+      case 'go_work':
+        return t(currentLanguage, 'buttonStates.goWork');
+      case 'awaiting_check_in':
+        return t(currentLanguage, 'buttonStates.awaitingCheckIn');
+      case 'check_in':
+        return t(currentLanguage, 'buttonStates.checkIn');
+      case 'working':
+        return t(currentLanguage, 'buttonStates.working');
+      case 'awaiting_check_out':
+        return t(currentLanguage, 'buttonStates.awaitingCheckOut');
+      case 'check_out':
+        return t(currentLanguage, 'buttonStates.checkOut');
+      case 'awaiting_complete':
+        return t(currentLanguage, 'buttonStates.awaitingComplete');
+      case 'complete':
+        return t(currentLanguage, 'buttonStates.complete');
+      case 'completed_day':
+        return t(currentLanguage, 'buttonStates.completedDay');
+      default:
+        // Fallback về text gốc từ BUTTON_STATES
+        return (BUTTON_STATES as any)[buttonState]?.text || 'UNKNOWN';
+    }
+  };
 
   // Logic disabled theo thiết kế mới - Chỉ disabled khi processing hoặc đã hoàn tất
   const isDisabled = isProcessing || state.currentButtonState === 'completed_day';
@@ -84,23 +114,23 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
     return false;
   };
 
-  // Hiển thị dialog xác nhận
+  // Hiển thị dialog xác nhận với i18n
   const showConfirmationDialog = () => {
     const actionText: Record<string, string> = {
-      'go_work': 'đi làm',
-      'check_in': 'chấm công vào',
-      'check_out': 'chấm công ra',
-      'complete': 'hoàn tất',
+      'go_work': t(currentLanguage, 'buttonStates.goWork').toLowerCase(),
+      'check_in': t(currentLanguage, 'buttonStates.checkIn').toLowerCase(),
+      'check_out': t(currentLanguage, 'buttonStates.checkOut').toLowerCase(),
+      'complete': t(currentLanguage, 'buttonStates.complete').toLowerCase(),
     };
 
-    const text = actionText[state.currentButtonState] || 'thực hiện hành động';
+    const text = actionText[state.currentButtonState] || t(currentLanguage, 'buttonStates.goWork').toLowerCase();
 
     Alert.alert(
-      '⚠️ Xác nhận hành động',
-      `Bạn đang ${text} không đúng thời gian dự kiến. Bạn có chắc chắn muốn tiếp tục không?`,
+      t(currentLanguage, 'modals.confirmAction'),
+      t(currentLanguage, 'modals.confirmActionMessage').replace('{action}', text),
       [
         {
-          text: 'Hủy',
+          text: t(currentLanguage, 'common.cancel'),
           style: 'cancel',
           onPress: () => {
             setIsPressed(false);
@@ -108,7 +138,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           }
         },
         {
-          text: 'Tiếp tục',
+          text: t(currentLanguage, 'modals.continue'),
           style: 'default',
           onPress: async () => {
             try {
@@ -117,7 +147,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               onPress?.();
             } catch (error) {
               console.error('Error in confirmed button press:', error);
-              Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
             } finally {
               setIsPressed(false);
               setIsProcessing(false);
@@ -161,23 +191,22 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       if (error instanceof Error && error.name === 'RapidPressDetectedException') {
         const rapidError = error as any; // Type assertion để truy cập properties
         const durationText = rapidError.actualDurationSeconds < 60
-          ? `${Math.round(rapidError.actualDurationSeconds)} giây`
-          : `${Math.round(rapidError.actualDurationSeconds / 60 * 10) / 10} phút`;
+          ? `${Math.round(rapidError.actualDurationSeconds)} ${t(currentLanguage, 'time.seconds')}`
+          : `${Math.round(rapidError.actualDurationSeconds / 60 * 10) / 10} ${t(currentLanguage, 'time.minutes')}`;
 
         Alert.alert(
-          '⚡ Phát hiện "Bấm Nhanh"',
-          `Bạn đã thực hiện check-in và check-out trong thời gian rất ngắn (${durationText}).\n\n` +
-          'Bạn có muốn xác nhận và tính đủ công theo lịch trình ca không?',
+          t(currentLanguage, 'modals.rapidPressDetected'),
+          t(currentLanguage, 'modals.rapidPressConfirmMessage').replace('{duration}', durationText),
           [
             {
-              text: 'Hủy',
+              text: t(currentLanguage, 'common.cancel'),
               style: 'cancel',
               onPress: () => {
                 console.log('❌ Người dùng hủy xác nhận bấm nhanh');
               }
             },
             {
-              text: 'Xác nhận',
+              text: t(currentLanguage, 'common.confirm'),
               style: 'default',
               onPress: async () => {
                 try {
@@ -190,18 +219,18 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
                   await checkTodayLogs();
 
                   Alert.alert(
-                    'Thành công',
-                    'Đã xác nhận và tính đủ công theo lịch trình ca.',
-                    [{ text: 'OK' }]
+                    t(currentLanguage, 'modals.rapidPressSuccess'),
+                    t(currentLanguage, 'modals.rapidPressSuccessMessage'),
+                    [{ text: t(currentLanguage, 'common.ok') }]
                   );
 
                   onPress?.();
                 } catch (confirmError) {
                   console.error('Error confirming rapid press:', confirmError);
                   Alert.alert(
-                    'Lỗi',
-                    'Không thể xác nhận. Vui lòng thử lại.',
-                    [{ text: 'OK' }]
+                    t(currentLanguage, 'common.error'),
+                    t(currentLanguage, 'common.error') + ': Không thể xác nhận. Vui lòng thử lại.',
+                    [{ text: t(currentLanguage, 'common.ok') }]
                   );
                 }
               }
@@ -211,9 +240,9 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       } else {
         // Lỗi khác
         Alert.alert(
-          'Lỗi',
-          'Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại.',
-          [{ text: 'OK' }]
+          t(currentLanguage, 'common.error'),
+          t(currentLanguage, 'common.error') + ': Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại.',
+          [{ text: t(currentLanguage, 'common.ok') }]
         );
       }
     } finally {
@@ -224,12 +253,12 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
   const handleReset = () => {
     Alert.alert(
-      'Xác nhận Reset',
-      'Bạn có muốn reset lại trạng thái chấm công hôm nay không? Mọi dữ liệu bấm nút hôm nay sẽ bị xóa.',
+      t(currentLanguage, 'modals.resetConfirm'),
+      t(currentLanguage, 'modals.resetConfirmMessage'),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
         {
-          text: 'Đồng ý',
+          text: t(currentLanguage, 'common.yes'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -253,10 +282,10 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               await new Promise(resolve => setTimeout(resolve, 100));
 
               console.log(`✅ MultiFunctionButton: Manual reset completed, current button state: ${state.currentButtonState}`);
-              Alert.alert('Thành công', 'Đã reset trạng thái chấm công hôm nay.');
+              Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'common.success') + ': Đã reset trạng thái chấm công hôm nay.');
             } catch (error) {
               console.error('❌ MultiFunctionButton: Reset failed:', error);
-              Alert.alert('Lỗi', 'Không thể reset trạng thái. Vui lòng thử lại.');
+              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Không thể reset trạng thái. Vui lòng thử lại.');
             }
           }
         },
@@ -313,7 +342,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
                 styles.buttonLabel,
                 { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
               ]}>
-                {buttonConfig.text}
+                {getButtonStateText(state.currentButtonState)}
               </Text>
             </View>
           </Button>
@@ -344,23 +373,23 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
                 time: new Date().toISOString(),
               });
 
-              Alert.alert('Thành công', 'Đã ký công thành công!');
+              Alert.alert(t(currentLanguage, 'modals.punchSuccess'), t(currentLanguage, 'modals.punchSuccessMessage'));
             } catch (error) {
-              Alert.alert('Lỗi', 'Không thể ký công. Vui lòng thử lại.');
+              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Không thể ký công. Vui lòng thử lại.');
             }
           }}
           style={styles.punchButton}
           contentStyle={styles.punchButtonContent}
           icon="pencil"
         >
-          Ký Công
+          {t(currentLanguage, 'modals.punchButton')}
         </Button>
       )}
 
       {/* Loading overlay for processing state */}
       <LoadingOverlay
         visible={isProcessing}
-        message="Đang xử lý chấm công..."
+        message={t(currentLanguage, 'common.loading')}
       />
     </View>
   );
@@ -439,11 +468,14 @@ const styles = StyleSheet.create({
   },
 });
 
-// Simple mode button (just shows "Đi Làm")
+// Simple mode button với i18n support
 export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
   const [isPressed, setIsPressed] = useState(false);
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   const handlePress = async () => {
     // Trong mode simple, chỉ cho phép bấm khi trạng thái là 'go_work'
@@ -459,7 +491,7 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
       await actions.handleButtonPress();
       onPress?.();
     } catch (error) {
-      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+      Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {
       setIsPressed(false);
     }
@@ -506,7 +538,7 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
               styles.buttonLabel,
               { color: isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF' }
             ]}>
-              {isDisabled ? 'ĐÃ XÁC NHẬN ĐI LÀM' : buttonConfig.text}
+              {isDisabled ? t(currentLanguage, 'buttonStates.confirmedGoWork') : t(currentLanguage, 'buttonStates.goWork')}
             </Text>
           </View>
         </Button>

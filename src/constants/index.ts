@@ -46,11 +46,11 @@ export const TIME_CONSTANTS = {
   MILLISECONDS_PER_DAY: 24 * 60 * 60 * 1000,
 } as const;
 
-// Button states and their display info - Icons đồng bộ với Material Community Icons
+// Button states and their display info - Icons đồng bộ với Material Community Icons (đã kiểm tra tính hợp lệ)
 export const BUTTON_STATES = {
   go_work: {
     text: 'ĐI LÀM',
-    icon: 'run',
+    icon: 'run', // Icon cơ bản và hợp lệ
     color: '#4CAF50',
   },
   awaiting_check_in: {
@@ -60,7 +60,7 @@ export const BUTTON_STATES = {
   },
   check_in: {
     text: 'CHẤM CÔNG VÀO',
-    icon: 'login',
+    icon: 'login', // Icon cơ bản và hợp lệ
     color: '#2196F3',
   },
   working: {
@@ -75,12 +75,12 @@ export const BUTTON_STATES = {
   },
   check_out: {
     text: 'CHẤM CÔNG RA',
-    icon: 'logout',
+    icon: 'logout', // Icon cơ bản và hợp lệ
     color: '#FF5722',
   },
   awaiting_complete: {
     text: 'CHỜ HOÀN TẤT',
-    icon: 'timer-sand',
+    icon: 'timer-sand', // Icon cơ bản và hợp lệ
     color: '#795548',
   },
   complete: {
@@ -90,150 +90,231 @@ export const BUTTON_STATES = {
   },
   completed_day: {
     text: 'ĐÃ HOÀN TẤT',
-    icon: 'target',
+    icon: 'target', // Icon cơ bản và hợp lệ
     color: '#9E9E9E',
   },
 } as const;
 
-// Weekly status icons and colors - Sử dụng Material Community Icons
+// Weekly status icons and colors - Sử dụng Material Community Icons với đa ngôn ngữ
 export const WEEKLY_STATUS = {
   completed: {
     icon: 'check-circle',
     color: '#4CAF50',
-    text: 'Hoàn thành',
+    text: {
+      vi: 'Hoàn thành',
+      en: 'Completed',
+    },
   },
   late: {
     icon: 'alert',
     color: '#FF9800',
-    text: 'Đi muộn',
+    text: {
+      vi: 'Đi muộn',
+      en: 'Late',
+    },
   },
   early: {
-    icon: 'clock-fast',
+    icon: 'clock', // Icon cơ bản và hợp lệ
     color: '#2196F3',
-    text: 'Về sớm',
+    text: {
+      vi: 'Về sớm',
+      en: 'Early',
+    },
   },
   absent: {
     icon: 'close-circle',
     color: '#F44336',
-    text: 'Vắng mặt',
+    text: {
+      vi: 'Vắng mặt',
+      en: 'Absent',
+    },
   },
   manual_present: {
     icon: 'account-check',
     color: '#9C27B0',
-    text: 'Có mặt (thủ công)',
+    text: {
+      vi: 'Có mặt (thủ công)',
+      en: 'Present (manual)',
+    },
   },
   manual_absent: {
     icon: 'sleep',
     color: '#607D8B',
-    text: 'Nghỉ (thủ công)',
+    text: {
+      vi: 'Nghỉ (thủ công)',
+      en: 'Absent (manual)',
+    },
   },
   manual_holiday: {
     icon: 'flag',
     color: '#E91E63',
-    text: 'Nghỉ lễ (thủ công)',
+    text: {
+      vi: 'Nghỉ lễ (thủ công)',
+      en: 'Holiday (manual)',
+    },
   },
   manual_completed: {
     icon: 'check-circle',
     color: '#4CAF50',
-    text: 'Hoàn thành (thủ công)',
+    text: {
+      vi: 'Hoàn thành (thủ công)',
+      en: 'Completed (manual)',
+    },
   },
   manual_review: {
     icon: 'eye-check',
     color: '#FF5722',
-    text: 'Cần xem lại (thủ công)',
+    text: {
+      vi: 'Cần xem lại (thủ công)',
+      en: 'Review (manual)',
+    },
   },
   pending: {
     icon: 'help-circle',
     color: '#9E9E9E',
-    text: 'Chưa xác định',
+    text: {
+      vi: 'Chưa xác định',
+      en: 'Pending',
+    },
   },
   review: {
     icon: 'eye-check',
     color: '#FF5722',
-    text: 'Cần xem lại',
+    text: {
+      vi: 'Cần xem lại',
+      en: 'Review',
+    },
   },
-  // Các trạng thái nghỉ mới theo yêu cầu - Sử dụng Material Community Icons
+  // Các trạng thái nghỉ mới theo yêu cầu - Sử dụng Material Community Icons với đa ngôn ngữ
   NGHI_PHEP: {
     icon: 'beach',
     color: '#00BCD4',
-    text: 'Nghỉ Phép',
+    text: {
+      vi: 'Nghỉ Phép',
+      en: 'Vacation',
+    },
   },
   NGHI_BENH: {
     icon: 'hospital-box',
     color: '#FF9800',
-    text: 'Nghỉ Bệnh',
+    text: {
+      vi: 'Nghỉ Bệnh',
+      en: 'Sick Leave',
+    },
   },
   NGHI_LE: {
     icon: 'flag',
     color: '#E91E63',
-    text: 'Nghỉ Lễ',
+    text: {
+      vi: 'Nghỉ Lễ',
+      en: 'Holiday',
+    },
   },
   VANG_MAT: {
     icon: 'close-circle',
     color: '#F44336',
-    text: 'Vắng Mặt',
+    text: {
+      vi: 'Vắng Mặt',
+      en: 'Absent',
+    },
   },
   CONG_TAC: {
     icon: 'airplane',
     color: '#673AB7',
-    text: 'Công Tác',
+    text: {
+      vi: 'Công Tác',
+      en: 'Business Trip',
+    },
   },
   DU_CONG: {
     icon: 'check-circle',
     color: '#4CAF50',
-    text: 'Đủ Công',
+    text: {
+      vi: 'Đủ Công',
+      en: 'Sufficient Work',
+    },
   },
   RV: {
     icon: 'eye-check',
     color: '#FF5722',
-    text: 'Cần Xem Lại',
+    text: {
+      vi: 'Cần Xem Lại',
+      en: 'Review Required',
+    },
   },
-  // Các trạng thái từ DailyWorkStatusNew - Sử dụng Material Community Icons
+  // Các trạng thái từ DailyWorkStatusNew - Sử dụng Material Community Icons với đa ngôn ngữ
   DI_MUON: {
-    icon: 'clock-alert',
+    icon: 'clock-alert', // Icon cơ bản và hợp lệ
     color: '#FF9800',
-    text: 'Đi Muộn',
+    text: {
+      vi: 'Đi Muộn',
+      en: 'Late Arrival',
+    },
   },
   VE_SOM: {
-    icon: 'run-fast',
+    icon: 'run', // Icon cơ bản và hợp lệ
     color: '#2196F3',
-    text: 'Về Sớm',
+    text: {
+      vi: 'Về Sớm',
+      en: 'Early Leave',
+    },
   },
   DI_MUON_VE_SOM: {
     icon: 'alert-circle',
     color: '#FF5722',
-    text: 'Vào muộn & Ra sớm',
+    text: {
+      vi: 'Vào muộn & Ra sớm',
+      en: 'Late In & Early Out',
+    },
   },
-  // Các trạng thái đặc biệt cho modal - Sử dụng Material Community Icons
+  // Các trạng thái đặc biệt cho modal - Sử dụng Material Community Icons với đa ngôn ngữ
   TINH_THEO_CHAM_CONG: {
     icon: 'calculator',
     color: '#2196F3',
-    text: 'Tính theo Chấm công',
+    text: {
+      vi: 'Tính theo Chấm công',
+      en: 'Calculate by Attendance',
+    },
   },
   THIEU_LOG: {
     icon: 'help-circle',
     color: '#9E9E9E',
-    text: 'Thiếu Log',
+    text: {
+      vi: 'Thiếu Log',
+      en: 'Missing Log',
+    },
   },
   XOA_TRANG_THAI_THU_CONG: {
     icon: 'delete',
     color: '#F44336',
-    text: 'Xóa trạng thái thủ công',
+    text: {
+      vi: 'Xóa trạng thái thủ công',
+      en: 'Delete Manual Status',
+    },
   },
   CHUA_DI: {
     icon: 'home',
     color: '#9E9E9E',
-    text: 'Chưa Đi',
+    text: {
+      vi: 'Chưa Đi',
+      en: 'Not Left',
+    },
   },
   DA_DI_CHUA_VAO: {
-    icon: 'walk',
+    icon: 'walk', // Icon cơ bản và hợp lệ
     color: '#FFC107',
-    text: 'Đã Đi Chưa Vào',
+    text: {
+      vi: 'Đã Đi Chưa Vào',
+      en: 'Left But Not Checked In',
+    },
   },
   CHUA_RA: {
     icon: 'briefcase',
     color: '#9C27B0',
-    text: 'Chưa Ra',
+    text: {
+      vi: 'Chưa Ra',
+      en: 'Not Checked Out',
+    },
   },
 } as const;
 
@@ -306,55 +387,108 @@ export const NOTIFICATION_CATEGORIES = {
   SHIFT_ROTATION: 'shift_rotation',
 } as const;
 
-// Default shifts (for initial setup)
-export const DEFAULT_SHIFTS = [
-  {
-    id: 'shift_morning',
-    name: 'Ca Sáng',
-    startTime: '08:00',
-    endTime: '17:00',
-    officeEndTime: '17:00',
-    breakMinutes: 60,
-    showPunch: false,
-    departureTime: '07:30',
-    isNightShift: false,
-    workDays: [1, 2, 3, 4, 5], // Monday to Friday
-  },
-  {
-    id: 'shift_afternoon',
-    name: 'Ca Chiều',
-    startTime: '14:00',
-    endTime: '22:00',
-    officeEndTime: '22:00',
-    breakMinutes: 30,
-    showPunch: false,
-    departureTime: '13:30',
-    isNightShift: false,
-    workDays: [1, 2, 3, 4, 5],
-  },
-  {
-    id: 'shift_night',
-    name: 'Ca Đêm',
-    startTime: '22:00',
-    endTime: '06:00',
-    officeEndTime: '06:00',
-    breakMinutes: 30,
-    showPunch: false,
-    departureTime: '21:30',
-    isNightShift: true,
-    workDays: [1, 2, 3, 4, 5],
-  },
-];
+// Default shifts (for initial setup) - Đa ngôn ngữ
+export const DEFAULT_SHIFTS = {
+  vi: [
+    {
+      id: 'shift_morning',
+      name: 'Ca Sáng',
+      startTime: '08:00',
+      endTime: '17:00',
+      officeEndTime: '17:00',
+      breakMinutes: 60,
+      showPunch: false,
+      departureTime: '07:30',
+      isNightShift: false,
+      workDays: [1, 2, 3, 4, 5], // Monday to Friday
+    },
+    {
+      id: 'shift_afternoon',
+      name: 'Ca Chiều',
+      startTime: '14:00',
+      endTime: '22:00',
+      officeEndTime: '22:00',
+      breakMinutes: 30,
+      showPunch: false,
+      departureTime: '13:30',
+      isNightShift: false,
+      workDays: [1, 2, 3, 4, 5],
+    },
+    {
+      id: 'shift_night',
+      name: 'Ca Đêm',
+      startTime: '22:00',
+      endTime: '06:00',
+      officeEndTime: '06:00',
+      breakMinutes: 30,
+      showPunch: false,
+      departureTime: '21:30',
+      isNightShift: true,
+      workDays: [1, 2, 3, 4, 5],
+    },
+  ],
+  en: [
+    {
+      id: 'shift_morning',
+      name: 'Morning Shift',
+      startTime: '08:00',
+      endTime: '17:00',
+      officeEndTime: '17:00',
+      breakMinutes: 60,
+      showPunch: false,
+      departureTime: '07:30',
+      isNightShift: false,
+      workDays: [1, 2, 3, 4, 5], // Monday to Friday
+    },
+    {
+      id: 'shift_afternoon',
+      name: 'Afternoon Shift',
+      startTime: '14:00',
+      endTime: '22:00',
+      officeEndTime: '22:00',
+      breakMinutes: 30,
+      showPunch: false,
+      departureTime: '13:30',
+      isNightShift: false,
+      workDays: [1, 2, 3, 4, 5],
+    },
+    {
+      id: 'shift_night',
+      name: 'Night Shift',
+      startTime: '22:00',
+      endTime: '06:00',
+      officeEndTime: '06:00',
+      breakMinutes: 30,
+      showPunch: false,
+      departureTime: '21:30',
+      isNightShift: true,
+      workDays: [1, 2, 3, 4, 5],
+    },
+  ],
+} as const;
 
-// Vietnamese public holidays (sample)
-export const DEFAULT_HOLIDAYS = [
-  { date: '2025-01-01', name: 'Tết Dương lịch', type: 'national' },
-  { date: '2025-01-28', name: 'Tết Nguyên đán (29 Tết)', type: 'national' },
-  { date: '2025-01-29', name: 'Tết Nguyên đán (30 Tết)', type: 'national' },
-  { date: '2025-01-30', name: 'Tết Nguyên đán (Mùng 1)', type: 'national' },
-  { date: '2025-01-31', name: 'Tết Nguyên đán (Mùng 2)', type: 'national' },
-  { date: '2025-02-01', name: 'Tết Nguyên đán (Mùng 3)', type: 'national' },
-  { date: '2025-04-30', name: 'Ngày Giải phóng miền Nam', type: 'national' },
-  { date: '2025-05-01', name: 'Ngày Quốc tế Lao động', type: 'national' },
-  { date: '2025-09-02', name: 'Ngày Quốc khánh', type: 'national' },
-] as const;
+// Public holidays (sample) - Đa ngôn ngữ
+export const DEFAULT_HOLIDAYS = {
+  vi: [
+    { date: '2025-01-01', name: 'Tết Dương lịch', type: 'national' },
+    { date: '2025-01-28', name: 'Tết Nguyên đán (29 Tết)', type: 'national' },
+    { date: '2025-01-29', name: 'Tết Nguyên đán (30 Tết)', type: 'national' },
+    { date: '2025-01-30', name: 'Tết Nguyên đán (Mùng 1)', type: 'national' },
+    { date: '2025-01-31', name: 'Tết Nguyên đán (Mùng 2)', type: 'national' },
+    { date: '2025-02-01', name: 'Tết Nguyên đán (Mùng 3)', type: 'national' },
+    { date: '2025-04-30', name: 'Ngày Giải phóng miền Nam', type: 'national' },
+    { date: '2025-05-01', name: 'Ngày Quốc tế Lao động', type: 'national' },
+    { date: '2025-09-02', name: 'Ngày Quốc khánh', type: 'national' },
+  ],
+  en: [
+    { date: '2025-01-01', name: 'New Year\'s Day', type: 'national' },
+    { date: '2025-01-28', name: 'Lunar New Year (29th)', type: 'national' },
+    { date: '2025-01-29', name: 'Lunar New Year (30th)', type: 'national' },
+    { date: '2025-01-30', name: 'Lunar New Year (1st)', type: 'national' },
+    { date: '2025-01-31', name: 'Lunar New Year (2nd)', type: 'national' },
+    { date: '2025-02-01', name: 'Lunar New Year (3rd)', type: 'national' },
+    { date: '2025-04-30', name: 'Liberation Day', type: 'national' },
+    { date: '2025-05-01', name: 'International Labor Day', type: 'national' },
+    { date: '2025-09-02', name: 'National Day', type: 'national' },
+  ],
+} as const;

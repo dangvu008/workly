@@ -20,6 +20,7 @@ import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { t } from '../i18n';
 
 type NotesScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'NotesTab'>,
@@ -38,21 +39,24 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'title'>('date');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
+
   const handleDeleteNote = (note: Note) => {
     Alert.alert(
-      'Xác nhận xóa',
-      `Bạn có muốn xóa ghi chú "${note.title}" không?`,
+      t(currentLanguage, 'common.confirm') + ' ' + t(currentLanguage, 'common.delete').toLowerCase(),
+      `${t(currentLanguage, 'common.confirm')} ${t(currentLanguage, 'common.delete').toLowerCase()} ${t(currentLanguage, 'notes.title').toLowerCase()} "${note.title}"?`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t(currentLanguage, 'common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await actions.deleteNote(note.id);
               Alert.alert('Thành công', 'Đã xóa ghi chú.');
             } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa ghi chú.');
+              Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể xóa ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
             }
           }
         }
@@ -205,7 +209,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       <View style={styles.header}>
         <View style={{ width: 48 }} />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
-          Tất Cả Ghi Chú
+          {t(currentLanguage, 'notes.title')}
         </Text>
         <View style={{ width: 48 }} />
       </View>
@@ -214,7 +218,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       <View style={styles.controlsRow}>
         <View style={styles.controlItem}>
           <Text style={[styles.controlLabel, { color: theme.colors.onSurface }]}>
-            Hiển thị TC:
+            {t(currentLanguage, 'common.info')}:
           </Text>
           <Menu
             visible={displayCountMenuVisible}
@@ -263,7 +267,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
 
         <View style={styles.controlItem}>
           <Text style={[styles.controlLabel, { color: theme.colors.onSurface }]}>
-            Sắp xếp:
+            {t(currentLanguage, 'common.info')}:
           </Text>
           <Menu
             visible={sortMenuVisible}
@@ -307,7 +311,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Searchbar
-          placeholder="Tìm kiếm ghi chú..."
+          placeholder={`${t(currentLanguage, 'common.info')} ${t(currentLanguage, 'notes.title').toLowerCase()}...`}
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}

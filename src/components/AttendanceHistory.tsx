@@ -8,6 +8,7 @@ import { useApp } from '../contexts/AppContext';
 import { AttendanceLog } from '../types';
 import { BUTTON_STATES } from '../constants';
 import { storageService } from '../services/storage';
+import { t } from '../i18n';
 
 interface AttendanceHistoryProps {
   visible?: boolean;
@@ -17,6 +18,9 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
   const theme = useTheme();
   const { state } = useApp();
   const [todayLogs, setTodayLogs] = useState<AttendanceLog[]>([]);
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   useEffect(() => {
     loadTodayLogs();
@@ -34,11 +38,11 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
 
   const getActionText = (type: AttendanceLog['type']): string => {
     const actionMap = {
-      go_work: 'Đi Làm',
-      check_in: 'Chấm Công Vào',
-      punch: 'Ký Công',
-      check_out: 'Chấm Công Ra',
-      complete: 'Hoàn Tất',
+      go_work: t(currentLanguage, 'attendanceHistory.actions.goWork'),
+      check_in: t(currentLanguage, 'attendanceHistory.actions.checkIn'),
+      punch: t(currentLanguage, 'attendanceHistory.actions.punch'),
+      check_out: t(currentLanguage, 'attendanceHistory.actions.checkOut'),
+      complete: t(currentLanguage, 'attendanceHistory.actions.complete'),
     };
     return actionMap[type] || type;
   };
@@ -67,7 +71,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
 
   const formatTime = (timeString: string): string => {
     try {
-      return format(parseISO(timeString), 'HH:mm', { locale: vi });
+      return format(parseISO(timeString), 'HH:mm', { locale: currentLanguage === 'vi' ? vi : undefined });
     } catch {
       return '--:--';
     }
@@ -82,7 +86,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
     <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
       <Card.Content>
         <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-          Lịch sử bấm nút hôm nay
+          {t(currentLanguage, 'attendanceHistory.title')}
         </Text>
         
         <ScrollView 
@@ -132,7 +136,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
         </ScrollView>
         
         <Text style={[styles.summary, { color: theme.colors.onSurfaceVariant }]}>
-          Tổng cộng: {todayLogs.length} hành động
+          {t(currentLanguage, 'attendanceHistory.totalActions').replace('{count}', todayLogs.length.toString())}
         </Text>
       </Card.Content>
     </Card>

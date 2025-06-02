@@ -18,6 +18,7 @@ import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { t } from '../i18n';
 
 
 type SettingsScreenNavigationProp = CompositeNavigationProp<
@@ -34,6 +35,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   const { state, actions } = useApp();
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const [modeMenuVisible, setModeMenuVisible] = useState(false);
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   // Status messages
   const [statusMessage, setStatusMessage] = useState<{
@@ -53,7 +57,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   if (!settings) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Text>Đang tải cài đặt...</Text>
+        <Text>{t(currentLanguage, 'messages.loadingSettings')}</Text>
       </SafeAreaView>
     );
   }
@@ -62,12 +66,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
     try {
       setStatusMessage({
         type: 'info',
-        message: 'ℹ️ Tính năng sao lưu sẽ được triển khai trong phiên bản tiếp theo.'
+        message: t(currentLanguage, 'messages.backupFeatureComingSoon')
       });
     } catch (error) {
       setStatusMessage({
         type: 'error',
-        message: '❌ Không thể sao lưu dữ liệu.'
+        message: t(currentLanguage, 'messages.cannotBackupData')
       });
     }
   };
@@ -76,12 +80,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
     try {
       setStatusMessage({
         type: 'info',
-        message: 'ℹ️ Tính năng phục hồi sẽ được triển khai trong phiên bản tiếp theo.'
+        message: t(currentLanguage, 'messages.restoreFeatureComingSoon')
       });
     } catch (error) {
       setStatusMessage({
         type: 'error',
-        message: '❌ Không thể phục hồi dữ liệu.'
+        message: t(currentLanguage, 'messages.cannotRestoreData')
       });
     }
   };
@@ -96,12 +100,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       await actions.updateSettings({ weatherLocation: null });
       setStatusMessage({
         type: 'success',
-        message: '✅ Đã xóa vị trí đã lưu thành công!'
+        message: t(currentLanguage, 'messages.locationDeletedSuccessfully')
       });
     } catch (error) {
       setStatusMessage({
         type: 'error',
-        message: '❌ Không thể xóa vị trí. Vui lòng thử lại.'
+        message: t(currentLanguage, 'messages.cannotDeleteLocation')
       });
     }
     setConfirmStates(prev => ({ ...prev, resetWeatherLocation: false }));
@@ -118,12 +122,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       await resetWithSampleNotes();
       setStatusMessage({
         type: 'success',
-        message: '✅ Đã thay thế bằng dữ liệu mẫu thành công! Vui lòng khởi động lại ứng dụng để thấy thay đổi.'
+        message: t(currentLanguage, 'messages.sampleDataReplacedSuccessfully')
       });
     } catch (error) {
       setStatusMessage({
         type: 'error',
-        message: '❌ Không thể thay thế dữ liệu. Vui lòng thử lại.'
+        message: t(currentLanguage, 'messages.cannotReplaceSampleData')
       });
     }
     setConfirmStates(prev => ({ ...prev, resetSampleNotes: false }));
@@ -140,12 +144,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       await clearAllNotes();
       setStatusMessage({
         type: 'success',
-        message: '✅ Đã xóa tất cả ghi chú thành công! Vui lòng khởi động lại ứng dụng để thấy thay đổi.'
+        message: t(currentLanguage, 'messages.allNotesDeletedSuccessfully')
       });
     } catch (error) {
       setStatusMessage({
         type: 'error',
-        message: '❌ Không thể xóa ghi chú. Vui lòng thử lại.'
+        message: t(currentLanguage, 'messages.cannotDeleteNotes')
       });
     }
     setConfirmStates(prev => ({ ...prev, clearAllNotes: false }));
@@ -156,7 +160,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       <View style={styles.header}>
         <View style={{ width: 48 }} />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
-          Cài đặt
+          {t(currentLanguage, 'settings.title')}
         </Text>
         <View style={{ width: 48 }} />
       </View>
@@ -166,11 +170,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Cài đặt chung
+              {t(currentLanguage, 'settings.general')}
             </Text>
 
             <List.Item
-              title="Ngôn ngữ"
+              title={t(currentLanguage, 'settings.language')}
               description={LANGUAGES[settings.language as keyof typeof LANGUAGES]}
               left={(props) => <List.Icon {...props} icon="translate" />}
               right={() => (
@@ -199,8 +203,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
 
             <List.Item
-              title="Giao diện"
-              description={settings.theme === 'dark' ? 'Tối' : 'Sáng'}
+              title={t(currentLanguage, 'settings.theme')}
+              description={settings.theme === 'dark' ? t(currentLanguage, 'settings.dark') : t(currentLanguage, 'settings.light')}
               left={(props) => <List.Icon {...props} icon="palette" />}
               right={() => (
                 <Switch
@@ -213,8 +217,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
 
             <List.Item
-              title="Chế độ nút đa năng"
-              description={settings.multiButtonMode === 'full' ? 'Đầy đủ' : 'Đơn giản'}
+              title={t(currentLanguage, 'settings.multiButtonMode')}
+              description={settings.multiButtonMode === 'full' ? t(currentLanguage, 'settings.full') : t(currentLanguage, 'settings.simple')}
               left={(props) => <List.Icon {...props} icon="gesture-tap-button" />}
               right={() => (
                 <Menu
@@ -232,14 +236,14 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                       actions.updateSettings({ multiButtonMode: 'full' });
                       setModeMenuVisible(false);
                     }}
-                    title="Đầy đủ"
+                    title={t(currentLanguage, 'settings.full')}
                   />
                   <Menu.Item
                     onPress={() => {
                       actions.updateSettings({ multiButtonMode: 'simple' });
                       setModeMenuVisible(false);
                     }}
-                    title="Đơn giản"
+                    title={t(currentLanguage, 'settings.simple')}
                   />
                 </Menu>
               )}
@@ -251,11 +255,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Nhắc nhở & Báo thức
+              {t(currentLanguage, 'settings.notificationsAndAlarms')}
             </Text>
 
             <List.Item
-              title="Âm thanh báo thức"
+              title={t(currentLanguage, 'settings.alarmSound')}
               left={(props) => <List.Icon {...props} icon="volume-high" />}
               right={() => (
                 <Switch
@@ -268,7 +272,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             />
 
             <List.Item
-              title="Rung báo thức"
+              title={t(currentLanguage, 'settings.vibration')}
               left={(props) => <List.Icon {...props} icon="vibrate" />}
               right={() => (
                 <Switch
@@ -286,11 +290,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Thời tiết
+              {t(currentLanguage, 'settings.weather')}
             </Text>
 
             <List.Item
-              title="Cảnh báo thời tiết"
+              title={t(currentLanguage, 'settings.weatherWarnings')}
               left={(props) => <List.Icon {...props} icon="weather-partly-cloudy" />}
               right={() => (
                 <Switch
@@ -304,8 +308,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 
             {settings.weatherLocation && (
               <List.Item
-                title="Quản lý vị trí"
-                description={`Đã lưu ${settings.weatherLocation.home ? 'vị trí nhà' : ''}${settings.weatherLocation.home && settings.weatherLocation.work ? ' và ' : ''}${settings.weatherLocation.work ? 'vị trí công ty' : ''}`}
+                title={t(currentLanguage, 'settings.locationManagement')}
+                description={`${t(currentLanguage, 'settings.savedLocation')} ${settings.weatherLocation.home ? t(currentLanguage, 'settings.homeLocation') : ''}${settings.weatherLocation.home && settings.weatherLocation.work ? t(currentLanguage, 'settings.and') : ''}${settings.weatherLocation.work ? t(currentLanguage, 'settings.workLocation') : ''}`}
                 left={(props) => <List.Icon {...props} icon="map-marker" />}
                 right={(props) => <List.Icon {...props} icon="delete" />}
                 onPress={handleResetWeatherLocation}
@@ -318,18 +322,18 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Quản lý dữ liệu
+              {t(currentLanguage, 'settings.dataManagement')}
             </Text>
 
             <List.Item
-              title="Sao lưu dữ liệu"
+              title={t(currentLanguage, 'settings.backupData')}
               left={(props) => <List.Icon {...props} icon="backup-restore" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={handleBackupData}
             />
 
             <List.Item
-              title="Phục hồi dữ liệu"
+              title={t(currentLanguage, 'settings.restoreData')}
               left={(props) => <List.Icon {...props} icon="restore" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={handleRestoreData}
@@ -341,20 +345,20 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Dữ liệu mẫu (Debug)
+              {t(currentLanguage, 'settings.sampleData')}
             </Text>
 
             <List.Item
-              title="Thay thế bằng dữ liệu mẫu"
-              description={`Hiện có ${state.notes.length} ghi chú`}
+              title={t(currentLanguage, 'settings.replaceSampleData')}
+              description={t(currentLanguage, 'messages.currentNotesCount').replace('{count}', state.notes.length.toString())}
               left={(props) => <List.Icon {...props} icon="database-refresh" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={handleResetSampleNotes}
             />
 
             <List.Item
-              title="Xóa tất cả ghi chú"
-              description="Xóa toàn bộ dữ liệu ghi chú"
+              title={t(currentLanguage, 'settings.clearAllNotes')}
+              description={t(currentLanguage, 'messages.deleteAllNotesData')}
               left={(props) => <List.Icon {...props} icon="delete-sweep" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={handleClearAllNotes}
@@ -366,12 +370,12 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Khác
+              {t(currentLanguage, 'settings.other')}
             </Text>
 
             <List.Item
-              title="Thông tin ứng dụng"
-              description="Phiên bản 1.0.0"
+              title={t(currentLanguage, 'settings.appInfo')}
+              description={t(currentLanguage, 'settings.version')}
               left={(props) => <List.Icon {...props} icon="information" />}
             />
           </Card.Content>
@@ -402,11 +406,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
             <Card.Content>
               <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
-                ⚠️ Xác nhận xóa vị trí
+                {t(currentLanguage, 'messages.confirmDeleteLocation')}
               </Text>
               <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
-                Bạn có muốn xóa vị trí đã lưu không?
-                {'\n'}Ứng dụng sẽ yêu cầu xác định vị trí lại khi bạn sử dụng tính năng chấm công.
+                {t(currentLanguage, 'messages.confirmDeleteLocationDescription')}
               </Text>
               <View style={styles.confirmActions}>
                 <Button
@@ -415,7 +418,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   style={styles.cancelButton}
                   textColor={theme.colors.onErrorContainer}
                 >
-                  Hủy
+                  {t(currentLanguage, 'common.cancel')}
                 </Button>
                 <Button
                   mode="contained"
@@ -423,7 +426,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
                   textColor={theme.colors.onError}
                 >
-                  Xóa
+                  {t(currentLanguage, 'common.delete')}
                 </Button>
               </View>
             </Card.Content>
@@ -434,11 +437,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
             <Card.Content>
               <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
-                ⚠️ Xác nhận thay thế dữ liệu
+                {t(currentLanguage, 'messages.confirmReplaceSampleData')}
               </Text>
               <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
-                Bạn có muốn thay thế tất cả ghi chú hiện tại bằng dữ liệu mẫu không?
-                {'\n'}Hành động này không thể hoàn tác.
+                {t(currentLanguage, 'messages.confirmReplaceSampleDataDescription')}
               </Text>
               <View style={styles.confirmActions}>
                 <Button
@@ -447,7 +449,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   style={styles.cancelButton}
                   textColor={theme.colors.onErrorContainer}
                 >
-                  Hủy
+                  {t(currentLanguage, 'common.cancel')}
                 </Button>
                 <Button
                   mode="contained"
@@ -455,7 +457,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
                   textColor={theme.colors.onError}
                 >
-                  Thay thế
+                  {t(currentLanguage, 'messages.replace')}
                 </Button>
               </View>
             </Card.Content>
@@ -466,11 +468,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Card style={[styles.card, { backgroundColor: theme.colors.errorContainer }]}>
             <Card.Content>
               <Text style={[styles.confirmTitle, { color: theme.colors.onErrorContainer }]}>
-                ⚠️ Xác nhận xóa tất cả
+                {t(currentLanguage, 'messages.confirmDeleteAllNotes')}
               </Text>
               <Text style={[styles.confirmMessage, { color: theme.colors.onErrorContainer }]}>
-                Bạn có muốn xóa tất cả ghi chú không?
-                {'\n'}Hành động này không thể hoàn tác.
+                {t(currentLanguage, 'messages.confirmDeleteAllNotesDescription')}
               </Text>
               <View style={styles.confirmActions}>
                 <Button
@@ -479,7 +480,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   style={styles.cancelButton}
                   textColor={theme.colors.onErrorContainer}
                 >
-                  Hủy
+                  {t(currentLanguage, 'common.cancel')}
                 </Button>
                 <Button
                   mode="contained"
@@ -487,7 +488,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   style={[styles.confirmButton, { backgroundColor: theme.colors.error }]}
                   textColor={theme.colors.onError}
                 >
-                  Xóa tất cả
+                  {t(currentLanguage, 'messages.deleteAll')}
                 </Button>
               </View>
             </Card.Content>

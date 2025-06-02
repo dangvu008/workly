@@ -21,6 +21,7 @@ import { RootStackParamList } from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { t } from '../i18n';
 
 type NoteDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'NoteDetail'>;
 
@@ -36,6 +37,9 @@ interface NoteDetailScreenProps {
 export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   const noteId = route.params?.noteId;
   const isEditing = !!noteId;
@@ -294,7 +298,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
           }}
         />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
-          {isEditing ? 'Chỉnh Sửa Ghi Chú' : 'Thêm Ghi Chú Mới'}
+          {isEditing ? t(currentLanguage, 'notes.editNote') : t(currentLanguage, 'notes.addNote')}
         </Text>
         <Button
           mode="contained"
@@ -306,7 +310,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
             !isFormValid() && { backgroundColor: theme.colors.surfaceDisabled }
           ]}
         >
-          Lưu
+          {t(currentLanguage, 'common.save')}
         </Button>
       </View>
 
@@ -319,7 +323,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
             </Text>
 
             <TextInput
-              label="Tiêu đề *"
+              label={`${t(currentLanguage, 'notes.noteTitle')} *`}
               value={formData.title}
               onChangeText={handleTitleChange}
               style={styles.input}
@@ -337,7 +341,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
             </View>
 
             <TextInput
-              label="Nội dung *"
+              label={`${t(currentLanguage, 'notes.noteContent')} *`}
               value={formData.content}
               onChangeText={handleContentChange}
               style={styles.input}
@@ -363,7 +367,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
 
             <View style={styles.switchRow}>
               <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                Ưu tiên ⭐
+                {t(currentLanguage, 'notes.priority')} ⭐
               </Text>
               <Switch
                 value={formData.isPriority}
@@ -377,7 +381,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Nhắc nhở
+              {t(currentLanguage, 'notes.reminderTime')}
             </Text>
 
             <View style={styles.switchRow}>

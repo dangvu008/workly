@@ -10,10 +10,12 @@ import {
   Menu
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
-import { WEEKLY_STATUS } from '../constants';
+import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
+import { t } from '../i18n';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
@@ -36,6 +38,9 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('week');
   const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
 
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
+
   const getDateRange = () => {
     const now = new Date();
 
@@ -44,21 +49,28 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
         return {
           start: startOfWeek(now, { weekStartsOn: 1 }),
           end: endOfWeek(now, { weekStartsOn: 1 }),
-          label: 'Tuần này'
+          label: t(currentLanguage, 'statistics.thisWeek')
         };
       case 'month':
         return {
           start: startOfMonth(now),
           end: endOfMonth(now),
-          label: 'Tháng này'
+          label: t(currentLanguage, 'statistics.thisMonth')
         };
       default:
         return {
           start: subWeeks(now, 4),
           end: now,
-          label: '4 tuần qua'
+          label: t(currentLanguage, 'statistics.last4Weeks')
         };
     }
+  };
+
+  // Hàm lấy tên thứ viết tắt theo ngôn ngữ hiện tại
+  const getDayAbbreviation = (date: Date): string => {
+    const dayNumber = date.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ...
+    const currentLanguage = state.settings?.language || 'vi';
+    return DAYS_OF_WEEK[currentLanguage as keyof typeof DAYS_OF_WEEK][dayNumber];
   };
 
   const getFilteredData = () => {
@@ -73,7 +85,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
       if (status) {
         filtered.push({
           date: dateString,
-          dayName: format(current, 'EEE', { locale: vi }),
+          dayName: getDayAbbreviation(current), // Sử dụng viết tắt theo ngôn ngữ (T2, T3... hoặc Mon, Tue...)
           ...status
         });
       }
@@ -115,8 +127,26 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  // Hàm lấy tên icon từ WEEKLY_STATUS để hiển thị với MaterialCommunityIcons
   const getStatusIcon = (status: string): string => {
-    return WEEKLY_STATUS[status as keyof typeof WEEKLY_STATUS]?.icon || '❓';
+    return WEEKLY_STATUS[status as keyof typeof WEEKLY_STATUS]?.icon || 'help-circle';
+  };
+
+  // Hàm lấy màu icon từ WEEKLY_STATUS
+  const getStatusColor = (status: string): string => {
+    return WEEKLY_STATUS[status as keyof typeof WEEKLY_STATUS]?.color || '#757575';
+  };
+
+  // Hàm lấy text trạng thái theo ngôn ngữ
+  const getStatusText = (status: string): string => {
+    const statusConfig = WEEKLY_STATUS[status as keyof typeof WEEKLY_STATUS];
+    if (!statusConfig) return status;
+
+    if (typeof statusConfig.text === 'string') {
+      return statusConfig.text;
+    } else {
+      return statusConfig.text[currentLanguage as keyof typeof statusConfig.text] || statusConfig.text.vi;
+    }
   };
 
   const data = getFilteredData();
@@ -128,7 +158,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
       <View style={styles.header}>
         <View style={{ width: 48 }} />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
-          Thống kê
+          {t(currentLanguage, 'statistics.title')}
         </Text>
         <Menu
           visible={periodMenuVisible}
@@ -146,21 +176,21 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
               setTimePeriod('week');
               setPeriodMenuVisible(false);
             }}
-            title="Tuần này"
+            title={t(currentLanguage, 'statistics.thisWeek')}
           />
           <Menu.Item
             onPress={() => {
               setTimePeriod('month');
               setPeriodMenuVisible(false);
             }}
-            title="Tháng này"
+            title={t(currentLanguage, 'statistics.thisMonth')}
           />
           <Menu.Item
             onPress={() => {
               setTimePeriod('custom');
               setPeriodMenuVisible(false);
             }}
-            title="4 tuần qua"
+            title={t(currentLanguage, 'statistics.last4Weeks')}
           />
         </Menu>
       </View>
@@ -186,7 +216,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
                 {summary.totalDays}
               </Text>
               <Text style={[styles.summaryLabel, { color: theme.colors.onSurface }]}>
-                Tổng ngày
+                {t(currentLanguage, 'statistics.totalDays')}
               </Text>
             </Card.Content>
           </Card>
@@ -197,7 +227,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
                 {summary.completedDays}
               </Text>
               <Text style={[styles.summaryLabel, { color: theme.colors.onSurface }]}>
-                Hoàn thành
+                {t(currentLanguage, 'statistics.completed')}
               </Text>
             </Card.Content>
           </Card>
@@ -208,7 +238,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
                 {formatHours(summary.totalHours)}
               </Text>
               <Text style={[styles.summaryLabel, { color: theme.colors.onSurface }]}>
-                Tổng giờ
+                {t(currentLanguage, 'statistics.totalHours')}
               </Text>
             </Card.Content>
           </Card>
@@ -219,7 +249,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
                 {summary.lateDays}
               </Text>
               <Text style={[styles.summaryLabel, { color: theme.colors.onSurface }]}>
-                Đi muộn
+                {t(currentLanguage, 'statistics.late')}
               </Text>
             </Card.Content>
           </Card>
@@ -229,13 +259,13 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Phân loại giờ làm việc
+              {t(currentLanguage, 'statistics.dailyDetails')} - Phân loại giờ
             </Text>
 
             <View style={styles.hoursBreakdown}>
               <View style={styles.hoursItem}>
                 <Text style={[styles.hoursLabel, { color: theme.colors.onSurface }]}>
-                  Giờ HC:
+                  {t(currentLanguage, 'statistics.standardHours')}:
                 </Text>
                 <Text style={[styles.hoursValue, { color: theme.colors.primary }]}>
                   {formatHours(summary.totalStandardHours)}
@@ -244,7 +274,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
 
               <View style={styles.hoursItem}>
                 <Text style={[styles.hoursLabel, { color: theme.colors.onSurface }]}>
-                  Giờ OT:
+                  {t(currentLanguage, 'statistics.overtimeHours')}:
                 </Text>
                 <Text style={[styles.hoursValue, { color: theme.colors.secondary }]}>
                   {formatHours(summary.totalOtHours)}
@@ -253,7 +283,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
 
               <View style={styles.hoursItem}>
                 <Text style={[styles.hoursLabel, { color: theme.colors.onSurface }]}>
-                  Giờ CN:
+                  {t(currentLanguage, 'statistics.sundayHours')}:
                 </Text>
                 <Text style={[styles.hoursValue, { color: theme.colors.tertiary }]}>
                   {formatHours(summary.totalSundayHours)}
@@ -262,7 +292,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
 
               <View style={styles.hoursItem}>
                 <Text style={[styles.hoursLabel, { color: theme.colors.onSurface }]}>
-                  Giờ đêm:
+                  {t(currentLanguage, 'statistics.nightHours')}:
                 </Text>
                 <Text style={[styles.hoursValue, { color: theme.colors.outline }]}>
                   {formatHours(summary.totalNightHours)}
@@ -276,34 +306,38 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Chi tiết theo ngày
+              {t(currentLanguage, 'statistics.dailyDetails')}
             </Text>
 
             <DataTable>
               <DataTable.Header>
-                <DataTable.Title>Ngày</DataTable.Title>
-                <DataTable.Title>Thứ</DataTable.Title>
-                <DataTable.Title numeric>Giờ HC</DataTable.Title>
-                <DataTable.Title numeric>Giờ OT</DataTable.Title>
-                <DataTable.Title>TT</DataTable.Title>
+                <DataTable.Title style={styles.dateColumn}>{t(currentLanguage, 'statistics.date')}</DataTable.Title>
+                <DataTable.Title style={styles.dayColumn}>{t(currentLanguage, 'statistics.day')}</DataTable.Title>
+                <DataTable.Title numeric style={styles.hoursColumn}>{t(currentLanguage, 'statistics.standardHours')}</DataTable.Title>
+                <DataTable.Title numeric style={styles.otColumn}>{t(currentLanguage, 'statistics.overtimeHours')}</DataTable.Title>
+                <DataTable.Title style={styles.statusColumn}>{t(currentLanguage, 'statistics.status')}</DataTable.Title>
               </DataTable.Header>
 
               {data.slice(0, 10).map((item) => (
                 <DataTable.Row key={item.date}>
-                  <DataTable.Cell>
+                  <DataTable.Cell style={styles.dateColumn}>
                     {format(new Date(item.date), 'dd/MM')}
                   </DataTable.Cell>
-                  <DataTable.Cell>
+                  <DataTable.Cell style={styles.dayColumn}>
                     {item.dayName}
                   </DataTable.Cell>
-                  <DataTable.Cell numeric>
+                  <DataTable.Cell numeric style={styles.hoursColumn}>
                     {item.standardHoursScheduled.toFixed(1)}
                   </DataTable.Cell>
-                  <DataTable.Cell numeric>
+                  <DataTable.Cell numeric style={styles.otColumn}>
                     {item.otHoursScheduled.toFixed(1)}
                   </DataTable.Cell>
-                  <DataTable.Cell>
-                    {getStatusIcon(item.status)}
+                  <DataTable.Cell style={styles.statusColumn}>
+                    <MaterialCommunityIcons
+                      name={getStatusIcon(item.status) as any}
+                      size={20}
+                      color={getStatusColor(item.status)}
+                    />
                   </DataTable.Cell>
                 </DataTable.Row>
               ))}
@@ -327,7 +361,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
           style={styles.exportButton}
           icon="download"
         >
-          Xuất báo cáo
+          {t(currentLanguage, 'statistics.exportReport')}
         </Button>
       </ScrollView>
     </SafeAreaView>
@@ -420,5 +454,24 @@ const styles = StyleSheet.create({
   },
   exportButton: {
     marginVertical: 16,
+  },
+  // Styles cho các cột trong DataTable để cải thiện layout
+  dateColumn: {
+    flex: 1.2, // Cột ngày chiếm 1.2 phần
+  },
+  dayColumn: {
+    flex: 0.8, // Cột thứ chiếm 0.8 phần (nhỏ hơn vì chỉ hiển thị T2, T3...)
+  },
+  hoursColumn: {
+    flex: 1, // Cột giờ HC chiếm 1 phần
+  },
+  otColumn: {
+    flex: 1, // Cột giờ OT chiếm 1 phần
+    paddingLeft: 8, // Thêm khoảng cách với cột trước đó
+  },
+  statusColumn: {
+    flex: 0.6, // Cột trạng thái chiếm 0.6 phần (nhỏ nhất vì chỉ hiển thị icon)
+    alignItems: 'center', // Căn giữa icon
+    paddingLeft: 8, // Thêm khoảng cách với cột Giờ OT
   },
 });

@@ -9,6 +9,7 @@ import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/Mu
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
 import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
+import { t } from '../i18n';
 import { NotificationStatusBanner } from '../components/NotificationStatusBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
@@ -37,6 +38,9 @@ const MemoizedAttendanceHistory = React.memo(AttendanceHistory);
 export function HomeScreen({ navigation }: HomeScreenProps) {
   const theme = useTheme();
   const { state, actions } = useApp();
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   // ✅ Tất cả useState hooks được khai báo đầu tiên và nhất quán
   const [refreshing, setRefreshing] = useState(false);
@@ -168,7 +172,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
     if (conflictGroups.length > 0) {
       const totalConflicts = conflictGroups.reduce((sum, group) => sum + group.length, 0);
-      return `Có ${totalConflicts} ghi chú nhắc nhở cùng lúc`;
+      return `${t(currentLanguage, 'common.warning')}: ${totalConflicts} ${t(currentLanguage, 'notes.title').toLowerCase()} nhắc nhở cùng lúc`;
     }
 
     return null;
@@ -203,16 +207,16 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         const diffMs = reminderDate.getTime() - now.getTime();
 
         if (diffMs < 0) {
-          return 'Đã qua';
+          return t(currentLanguage, 'timeDate.passed');
         } else if (diffMs < 24 * 60 * 60 * 1000) {
-          return `Hôm nay ${format(reminderDate, 'HH:mm')}`;
+          return `${t(currentLanguage, 'timeDate.today')} ${format(reminderDate, 'HH:mm')}`;
         } else if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-          return format(reminderDate, 'EEEE HH:mm', { locale: vi });
+          return format(reminderDate, 'EEEE HH:mm', { locale: currentLanguage === 'vi' ? vi : undefined });
         } else {
           return format(reminderDate, 'dd/MM/yyyy HH:mm');
         }
       } catch (error) {
-        return 'Lỗi thời gian';
+        return t(currentLanguage, 'timeDate.timeError');
       }
     }
 
@@ -223,11 +227,11 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
       );
 
       if (associatedShifts.length === 0) {
-        return 'Ca đã bị xóa';
+        return t(currentLanguage, 'timeDate.shiftDeleted');
       }
 
       const shiftNames = associatedShifts.map(shift => shift.name).join(', ');
-      return `Theo ca: ${shiftNames}`;
+      return `${t(currentLanguage, 'timeDate.byShift')}: ${shiftNames}`;
     }
 
     return '';
@@ -249,18 +253,18 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   // Handle note deletion with confirmation
   const handleDeleteNote = (note: any) => {
     Alert.alert(
-      'Xác nhận xóa',
-      `Bạn có muốn xóa ghi chú "${note.title}" không?`,
+      t(currentLanguage, 'common.confirm') + ' ' + t(currentLanguage, 'common.delete').toLowerCase(),
+      `${t(currentLanguage, 'common.confirm')} ${t(currentLanguage, 'common.delete').toLowerCase()} ${t(currentLanguage, 'notes.title').toLowerCase()} "${note.title}"?`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t(currentLanguage, 'common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await actions.deleteNote(note.id);
             } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa ghi chú.');
+              Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể xóa ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
             }
           }
         }
@@ -271,19 +275,19 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   // Handle hide note from home screen
   const handleHideNote = (note: any) => {
     Alert.alert(
-      'Ẩn ghi chú',
-      `Bạn có muốn ẩn ghi chú "${note.title}" khỏi trang chủ và tắt nhắc nhở tiếp theo không?`,
+      t(currentLanguage, 'actions.hide') + ' ' + t(currentLanguage, 'notes.title').toLowerCase(),
+      `${t(currentLanguage, 'common.confirm')} ${t(currentLanguage, 'actions.hide').toLowerCase()} ${t(currentLanguage, 'notes.title').toLowerCase()} "${note.title}" khỏi ${t(currentLanguage, 'home.title').toLowerCase()}?`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
         {
-          text: 'Ẩn',
+          text: t(currentLanguage, 'actions.hide'),
           onPress: async () => {
             try {
               await actions.updateNote(note.id, { isHiddenFromHome: true });
               // Cancel any scheduled reminders for this note
               await notificationService.cancelNoteReminder(note.id);
             } catch (error) {
-              Alert.alert('Lỗi', 'Không thể ẩn ghi chú.');
+              Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể ẩn ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
             }
           }
         }
@@ -294,24 +298,24 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   // Handle snooze note
   const handleSnoozeNote = (note: any) => {
     Alert.alert(
-      'Báo lại',
-      'Chọn thời gian báo lại:',
+      t(currentLanguage, 'timeDate.snoozeOptions.title'),
+      t(currentLanguage, 'timeDate.snoozeOptions.selectTime'),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
         {
-          text: '5 phút',
+          text: t(currentLanguage, 'timeDate.snoozeOptions.fiveMinutes'),
           onPress: () => snoozeNote(note, 5)
         },
         {
-          text: '15 phút',
+          text: t(currentLanguage, 'timeDate.snoozeOptions.fifteenMinutes'),
           onPress: () => snoozeNote(note, 15)
         },
         {
-          text: '30 phút',
+          text: t(currentLanguage, 'timeDate.snoozeOptions.thirtyMinutes'),
           onPress: () => snoozeNote(note, 30)
         },
         {
-          text: '1 giờ',
+          text: t(currentLanguage, 'timeDate.snoozeOptions.oneHour'),
           onPress: () => snoozeNote(note, 60)
         }
       ]
@@ -334,7 +338,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         reminderDateTime: snoozeUntil.toISOString()
       });
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể báo lại ghi chú.');
+      Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể ${t(currentLanguage, 'actions.snooze').toLowerCase()} ${t(currentLanguage, 'notes.title').toLowerCase()}.`);
     }
   };
 
@@ -342,7 +346,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   if (state.isLoading) {
     return (
       <SafeAreaView style={[commonStyles.container, { backgroundColor: theme.colors.background }]}>
-        <LoadingSpinner message="Đang tải dữ liệu..." />
+        <LoadingSpinner message={t(currentLanguage, 'common.loading')} />
       </SafeAreaView>
     );
   }
@@ -387,7 +391,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           <Card.Content>
             <View style={styles.shiftHeader}>
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
-                Ca làm việc hiện tại
+                {t(currentLanguage, 'home.currentShift')}
               </Text>
               <IconButton
                 icon="pencil"
@@ -398,7 +402,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               />
             </View>
             <Text style={[styles.shiftName, { color: theme.colors.primary }]}>
-              {state.activeShift?.name || 'Chưa chọn ca'}
+              {state.activeShift?.name || t(currentLanguage, 'home.noActiveShift')}
             </Text>
             {state.activeShift && (
               <Text style={[commonStyles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
@@ -440,7 +444,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           <Card.Content>
             <View style={styles.notesHeader}>
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
-                Ghi Chú Sắp Tới
+                {t(currentLanguage, 'home.upcomingReminders')}
               </Text>
               <IconButton
                 icon="menu"
@@ -492,7 +496,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                             </Text>
                             {reminderInfo && (
                               <Text style={[styles.noteReminder, { color: theme.colors.primary }]}>
-                                Nhắc: {reminderInfo}
+                                {t(currentLanguage, 'timeDate.remind')}: {reminderInfo}
                               </Text>
                             )}
                           </View>
@@ -543,7 +547,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               </>
             ) : (
               <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                Không có ghi chú sắp tới
+                {t(currentLanguage, 'notes.noNotes')}
               </Text>
             )}
 
@@ -553,7 +557,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               style={styles.addNoteButton}
               icon="plus"
             >
-              Thêm Ghi Chú
+              {t(currentLanguage, 'notes.addNote')}
             </Button>
           </Card.Content>
         </AnimatedCard>

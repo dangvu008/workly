@@ -9,6 +9,7 @@ import { DailyWorkStatus } from '../types';
 import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
 import { ManualStatusUpdateModal } from './ManualStatusUpdateModal';
+import { t } from '../i18n';
 
 interface WeeklyStatusGridProps {
   onDayPress?: (date: string) => void;
@@ -20,6 +21,9 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
   const [menuVisible, setMenuVisible] = React.useState<string | null>(null);
   const [manualUpdateModalVisible, setManualUpdateModalVisible] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<string>('');
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
 
 
@@ -196,16 +200,16 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       setMenuVisible(null);
 
       const statusText = {
-        manual_present: 'Có mặt',
-        manual_absent: 'Nghỉ',
-        manual_holiday: 'Nghỉ lễ',
-        manual_completed: 'Hoàn thành',
-        manual_review: 'Cần xem lại',
+        manual_present: t(currentLanguage, 'workStatus.present'),
+        manual_absent: t(currentLanguage, 'workStatus.absent'),
+        manual_holiday: t(currentLanguage, 'workStatus.holiday'),
+        manual_completed: t(currentLanguage, 'workStatus.completed'),
+        manual_review: t(currentLanguage, 'workStatus.review'),
       }[status];
 
-      Alert.alert('Thành công', `Đã đánh dấu ${format(new Date(date), 'dd/MM')} là "${statusText}"`);
+      Alert.alert(t(currentLanguage, 'common.success'), `${t(currentLanguage, 'common.success')}: ${format(new Date(date), 'dd/MM')} - "${statusText}"`);
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+      Alert.alert(t(currentLanguage, 'common.error'), `${t(currentLanguage, 'common.error')}: Không thể cập nhật trạng thái.`);
     }
   };
 
@@ -267,27 +271,27 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
           >
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_present')}
-              title="Đánh dấu Có mặt (P)"
+              title={`${t(currentLanguage, 'workStatus.present')} (P)`}
               leadingIcon="check-circle"
             />
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_absent')}
-              title="Đánh dấu Nghỉ (B)"
+              title={`${t(currentLanguage, 'workStatus.absent')} (B)`}
               leadingIcon="sleep"
             />
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_holiday')}
-              title="Đánh dấu Nghỉ lễ (H)"
+              title={`${t(currentLanguage, 'workStatus.holiday')} (H)`}
               leadingIcon="flag"
             />
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_completed')}
-              title="Đánh dấu Hoàn thành (✅)"
+              title={`${t(currentLanguage, 'workStatus.completed')} (✅)`}
               leadingIcon="check-all"
             />
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_review')}
-              title="Đánh dấu Cần xem lại (RV)"
+              title={`${t(currentLanguage, 'workStatus.review')} (RV)`}
               leadingIcon="eye-check"
             />
           </Menu>
@@ -301,7 +305,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
       <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
         <Card.Content>
           <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-            Trạng thái tuần này
+            {t(currentLanguage, 'statistics.thisWeek')} - {t(currentLanguage, 'statistics.status')}
           </Text>
 
           <View style={styles.grid}>

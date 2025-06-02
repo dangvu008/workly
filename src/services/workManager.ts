@@ -62,6 +62,7 @@ class WorkManager {
 
       // Kiểm tra hide logic - ẩn 2 giờ sau giờ kết thúc ca
       const shouldHide = this.shouldHideButton(activeShift, currentTime);
+      console.log(`🔘 WorkManager: Hide check result: ${shouldHide} for shift ${activeShift.name} (${activeShift.endTime})`);
       if (shouldHide) {
         console.log('🔘 WorkManager: Should hide button, returning completed_day');
         return 'completed_day';
@@ -108,13 +109,23 @@ class WorkManager {
           console.log('🔘 WorkManager: Before end time, returning working');
           return 'working';
         }
-        console.log('🔘 WorkManager: After end time, returning check_out');
-        return 'check_out';
+        console.log('🔘 WorkManager: After end time, returning awaiting_check_out');
+        return 'awaiting_check_out';
       }
 
-      // Có check_out rồi, chờ complete
-      console.log('🔘 WorkManager: Has check_out, returning complete');
-      return 'complete';
+      if (!hasComplete) {
+        // Có check_out rồi, kiểm tra thời gian để quyết định awaiting_complete hay complete
+        if (currentTime < activeShift.officeEndTime) {
+          console.log('🔘 WorkManager: Before office end time, returning awaiting_complete');
+          return 'awaiting_complete';
+        }
+        console.log('🔘 WorkManager: After office end time, returning complete');
+        return 'complete';
+      }
+
+      // Đã hoàn tất tất cả
+      console.log('🔘 WorkManager: Has complete log, returning completed_day');
+      return 'completed_day';
 
     } catch (error) {
       console.error('Error getting current button state:', error);
@@ -138,20 +149,28 @@ class WorkManager {
           await this.addAttendanceLog(today, 'go_work', now);
           break;
 
+        case 'awaiting_check_in':
+          // Trong trạng thái awaiting, bấm nút sẽ thực hiện check_in
+          await this.addAttendanceLog(today, 'check_in', now);
+          break;
+
         case 'check_in':
           await this.addAttendanceLog(today, 'check_in', now);
           break;
 
+        case 'working':
+        case 'awaiting_check_out':
         case 'check_out':
-          // Kiểm tra rapid press logic
+          // Tất cả các trạng thái này đều thực hiện check_out
+          // Kiểm tra rapid press logic trước
           const logs = await storageService.getAttendanceLogsForDate(today);
           const checkInLog = logs.find(log => log.type === 'check_in');
-          
+
           if (checkInLog && settings.multiButtonMode === 'full') {
             const checkInTime = new Date(checkInLog.time);
             const checkOutTime = new Date(now);
             const durationSeconds = differenceInSeconds(checkOutTime, checkInTime);
-            
+
             if (durationSeconds < settings.rapidPressThresholdSeconds) {
               // Throw exception để UI xử lý confirmation dialog
               throw new RapidPressDetectedException(
@@ -162,8 +181,13 @@ class WorkManager {
               );
             }
           }
-          
+
           await this.addAttendanceLog(today, 'check_out', now);
+          break;
+
+        case 'awaiting_complete':
+          // Trong trạng thái awaiting, bấm nút sẽ thực hiện complete
+          await this.addAttendanceLog(today, 'complete', now);
           break;
 
         case 'complete':
@@ -503,19 +527,32 @@ class WorkManager {
    */
   private shouldHideButton(shift: Shift, currentTime: string): boolean {
     try {
+      // DEBUG: Tạm thời disable hide logic để test
+      const DEBUG_DISABLE_HIDE = true;
+      if (DEBUG_DISABLE_HIDE) {
+        console.log(`🔘 WorkManager: shouldHideButton - DEBUG MODE: Hide logic disabled for testing`);
+        return false;
+      }
+
       const [endHour, endMin] = shift.endTime.split(':').map(Number);
       let hideHour = endHour + 2;
+
+      console.log(`🔘 WorkManager: shouldHideButton - Shift endTime: ${shift.endTime}, Current time: ${currentTime}`);
 
       // Xử lý trường hợp vượt quá 24h
       if (hideHour >= 24) {
         hideHour -= 24;
+        console.log(`🔘 WorkManager: shouldHideButton - Hide hour adjusted to next day: ${hideHour}:${endMin.toString().padStart(2, '0')}, returning false`);
         // Nếu hide time là ngày hôm sau, không ẩn (vì chúng ta chỉ check trong ngày)
         return false;
       }
 
       const hideTime = `${hideHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+      const shouldHide = currentTime > hideTime;
 
-      return currentTime > hideTime;
+      console.log(`🔘 WorkManager: shouldHideButton - Hide time: ${hideTime}, Current: ${currentTime}, Should hide: ${shouldHide}`);
+
+      return shouldHide;
 
     } catch (error) {
       console.error('Error checking hide button:', error);

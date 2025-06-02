@@ -20,6 +20,7 @@ import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { t } from '../i18n';
 
 type ShiftManagementScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'ShiftsTab'>,
@@ -44,6 +45,9 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
   const isRotationMode = route.params?.mode === 'select_rotation';
   const settings = state.settings;
 
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
+
   // Initialize selected shifts for rotation mode
   React.useEffect(() => {
     if (isRotationMode && settings?.rotationConfig?.rotationShifts) {
@@ -60,7 +64,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
         } else if (prev.length < 3) {
           return [...prev, shiftId];
         } else {
-          Alert.alert('Thông báo', 'Chỉ có thể chọn tối đa 3 ca để xoay vòng.');
+          Alert.alert(t(currentLanguage, 'common.info'), t(currentLanguage, 'shifts.maxRotationShifts'));
           return prev;
         }
       });
@@ -68,28 +72,28 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
       // Single select for active shift
       try {
         await actions.setActiveShift(shiftId);
-        Alert.alert('Thành công', 'Đã chọn ca làm việc mới.');
+        Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'shifts.successSelected'));
       } catch (error) {
-        Alert.alert('Lỗi', 'Không thể chọn ca làm việc.');
+        Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'shifts.errorSelect'));
       }
     }
   };
 
   const handleDeleteShift = (shift: Shift) => {
     Alert.alert(
-      'Xác nhận xóa',
-      `Bạn có muốn xóa ca "${shift.name}" không?`,
+      t(currentLanguage, 'shifts.confirmDelete'),
+      t(currentLanguage, 'shifts.confirmDeleteMessage').replace('{name}', shift.name),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t(currentLanguage, 'common.cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t(currentLanguage, 'common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await actions.deleteShift(shift.id);
-              Alert.alert('Thành công', 'Đã xóa ca làm việc.');
+              Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'shifts.successDeleted'));
             } catch (error) {
-              Alert.alert('Lỗi', 'Không thể xóa ca làm việc.');
+              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'shifts.errorDelete'));
             }
           }
         }
@@ -109,9 +113,9 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
           changeShiftReminderMode: mode,
         });
       }
-      Alert.alert('Thành công', 'Đã cập nhật chế độ ca làm việc.');
+      Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'shifts.successUpdatedMode'));
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cập nhật chế độ ca.');
+      Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'shifts.errorUpdateMode'));
     }
   };
 
@@ -131,15 +135,15 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
         }
       });
       setFrequencyMenuVisible(false);
-      Alert.alert('Thành công', 'Đã cập nhật tần suất xoay ca.');
+      Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'shifts.successUpdatedFrequency'));
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cập nhật tần suất xoay ca.');
+      Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'shifts.errorUpdateFrequency'));
     }
   };
 
   const handleConfirmRotation = async () => {
     if (selectedShifts.length < 2) {
-      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất 2 ca để xoay vòng.');
+      Alert.alert(t(currentLanguage, 'common.info'), t(currentLanguage, 'shifts.minRotationShifts'));
       return;
     }
 
@@ -155,10 +159,10 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
           currentRotationIndex: currentActiveIndex >= 0 ? currentActiveIndex : 0,
         }
       });
-      Alert.alert('Thành công', 'Đã cấu hình xoay ca thành công.');
+      Alert.alert(t(currentLanguage, 'common.success'), t(currentLanguage, 'shifts.successConfiguredRotation'));
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cấu hình xoay ca.');
+      Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'shifts.errorConfigureRotation'));
     }
   };
 
@@ -195,7 +199,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   style={[styles.activeChip, { backgroundColor: theme.colors.primaryContainer }]}
                   textStyle={{ color: theme.colors.onPrimaryContainer }}
                 >
-                  Đang sử dụng
+                  {t(currentLanguage, 'shifts.currentlyUsing')}
                 </Chip>
               )}
               {isSelected && isRotationMode && (
@@ -204,7 +208,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   style={[styles.selectedChip, { backgroundColor: theme.colors.secondaryContainer }]}
                   textStyle={{ color: theme.colors.onSecondaryContainer }}
                 >
-                  Đã chọn
+                  {t(currentLanguage, 'shifts.selected')}
                 </Chip>
               )}
             </View>
@@ -233,12 +237,12 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
             </Text>
             {shift.isNightShift && (
               <Text style={[styles.nightShift, { color: theme.colors.tertiary }]}>
-                🌙 Ca đêm
+                {t(currentLanguage, 'shifts.nightShift')}
               </Text>
             )}
             {shift.showPunch && (
               <Text style={[styles.punchRequired, { color: theme.colors.secondary }]}>
-                ✍️ Yêu cầu ký công
+                {t(currentLanguage, 'shifts.punchRequired')}
               </Text>
             )}
           </View>
@@ -249,8 +253,8 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
             style={styles.selectButton}
           >
             {isRotationMode
-              ? (isSelected ? 'Đã chọn' : 'Chọn')
-              : (isActive ? 'Đang sử dụng' : 'Chọn ca này')
+              ? (isSelected ? t(currentLanguage, 'shifts.selected') : t(currentLanguage, 'shifts.choose'))
+              : (isActive ? t(currentLanguage, 'shifts.currentlyUsing') : t(currentLanguage, 'shifts.selectThis'))
             }
           </Button>
         </Card.Content>
@@ -271,7 +275,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
           <View style={{ width: 48 }} />
         )}
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
-          {isRotationMode ? 'Chọn ca xoay vòng' : 'Quản lý ca'}
+          {isRotationMode ? t(currentLanguage, 'shifts.selectRotation') : t(currentLanguage, 'shifts.management')}
         </Text>
         <View style={{ width: 48 }} />
       </View>
@@ -280,7 +284,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
         <Card style={[styles.infoCard, { backgroundColor: theme.colors.primaryContainer }]}>
           <Card.Content>
             <Text style={[styles.infoText, { color: theme.colors.onPrimaryContainer }]}>
-              Chọn 2-3 ca để xoay vòng hàng tuần. Đã chọn: {selectedShifts.length}/3
+              {t(currentLanguage, 'shifts.rotationInfo').replace('{count}', selectedShifts.length.toString())}
             </Text>
           </Card.Content>
         </Card>
@@ -292,13 +296,13 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
           <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                Chế độ Ca & Nhắc Đổi Ca
+                {t(currentLanguage, 'shifts.shiftModeConfig')}
               </Text>
 
               {/* Mode Selection */}
               <View style={styles.modeSection}>
                 <Text style={[styles.modeLabel, { color: theme.colors.onSurface }]}>
-                  Chế độ chính:
+                  {t(currentLanguage, 'shifts.mainMode')}
                 </Text>
 
                 <RadioButton.Group
@@ -308,21 +312,21 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   <View style={styles.radioItem}>
                     <RadioButton value="disabled" />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      Tắt - Không có nhắc nhở hay tự động xoay ca
+                      {t(currentLanguage, 'shifts.disabled')}
                     </Text>
                   </View>
 
                   <View style={styles.radioItem}>
                     <RadioButton value="ask_weekly" />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      Nhắc nhở hàng tuần - Nhắc kiểm tra và thay đổi ca cuối tuần
+                      {t(currentLanguage, 'shifts.askWeekly')}
                     </Text>
                   </View>
 
                   <View style={styles.radioItem}>
                     <RadioButton value="rotate" />
                     <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      Tự động xoay ca - Tự động thay đổi ca theo tần suất
+                      {t(currentLanguage, 'shifts.rotate')}
                     </Text>
                   </View>
                 </RadioButton.Group>
@@ -334,7 +338,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   <Divider style={styles.divider} />
 
                   <Text style={[styles.configTitle, { color: theme.colors.onSurface }]}>
-                    Cấu hình xoay ca tự động:
+                    {t(currentLanguage, 'shifts.autoRotationConfig')}
                   </Text>
 
                   {/* Select Rotation Shifts Button */}
@@ -344,14 +348,14 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                     style={styles.configButton}
                     icon="clock-outline"
                   >
-                    Chọn Ca Xoay Vòng ({settings.rotationConfig?.rotationShifts?.length || 0}/3)
+                    {t(currentLanguage, 'shifts.selectRotationShifts').replace('{count}', (settings.rotationConfig?.rotationShifts?.length || 0).toString())}
                   </Button>
 
                   {/* Show selected shifts */}
                   {settings.rotationConfig?.rotationShifts && settings.rotationConfig.rotationShifts.length > 0 && (
                     <View style={styles.selectedShifts}>
                       <Text style={[styles.selectedLabel, { color: theme.colors.onSurfaceVariant }]}>
-                        Ca đã chọn:
+                        {t(currentLanguage, 'shifts.selectedShifts')}
                       </Text>
                       <View style={styles.shiftChips}>
                         {settings.rotationConfig.rotationShifts.map((shiftId, index) => {
@@ -367,8 +371,8 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                               ]}
                               textStyle={isActive ? { color: theme.colors.onPrimaryContainer } : undefined}
                             >
-                              {shift?.name || 'Ca không tồn tại'}
-                              {isActive && ' (Hiện tại)'}
+                              {shift?.name || t(currentLanguage, 'shifts.shiftNotExist')}
+                              {isActive && ` ${t(currentLanguage, 'shifts.current')}`}
                             </Chip>
                           );
                         })}
@@ -379,7 +383,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   {/* Frequency Selection */}
                   <View style={styles.frequencySection}>
                     <Text style={[styles.frequencyLabel, { color: theme.colors.onSurface }]}>
-                      Tần suất xoay ca:
+                      {t(currentLanguage, 'shifts.rotationFrequency')}
                     </Text>
                     <Menu
                       visible={frequencyMenuVisible}
@@ -393,11 +397,11 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                         >
                           {(() => {
                             switch (settings.rotationConfig?.rotationFrequency) {
-                              case 'weekly': return 'Sau 1 tuần';
-                              case 'biweekly': return 'Sau 2 tuần';
-                              case 'triweekly': return 'Sau 3 tuần';
-                              case 'monthly': return 'Sau 1 tháng';
-                              default: return 'Chọn tần suất';
+                              case 'weekly': return t(currentLanguage, 'shifts.weekly');
+                              case 'biweekly': return t(currentLanguage, 'shifts.biweekly');
+                              case 'triweekly': return t(currentLanguage, 'shifts.triweekly');
+                              case 'monthly': return t(currentLanguage, 'shifts.monthly');
+                              default: return t(currentLanguage, 'shifts.selectFrequency');
                             }
                           })()}
                         </Button>
@@ -405,19 +409,19 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                     >
                       <Menu.Item
                         onPress={() => handleFrequencyChange('weekly')}
-                        title="Sau 1 tuần"
+                        title={t(currentLanguage, 'shifts.weekly')}
                       />
                       <Menu.Item
                         onPress={() => handleFrequencyChange('biweekly')}
-                        title="Sau 2 tuần"
+                        title={t(currentLanguage, 'shifts.biweekly')}
                       />
                       <Menu.Item
                         onPress={() => handleFrequencyChange('triweekly')}
-                        title="Sau 3 tuần"
+                        title={t(currentLanguage, 'shifts.triweekly')}
                       />
                       <Menu.Item
                         onPress={() => handleFrequencyChange('monthly')}
-                        title="Sau 1 tháng"
+                        title={t(currentLanguage, 'shifts.monthly')}
                       />
                     </Menu>
                   </View>
@@ -425,7 +429,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   {/* Last Applied Date Info */}
                   {settings.rotationConfig?.rotationLastAppliedDate && (
                     <Text style={[styles.lastAppliedText, { color: theme.colors.onSurfaceVariant }]}>
-                      Lần xoay cuối: {new Date(settings.rotationConfig.rotationLastAppliedDate).toLocaleDateString('vi-VN')}
+                      {t(currentLanguage, 'shifts.lastRotation').replace('{date}', new Date(settings.rotationConfig.rotationLastAppliedDate).toLocaleDateString(currentLanguage === 'vi' ? 'vi-VN' : 'en-US'))}
                     </Text>
                   )}
                 </View>
@@ -441,14 +445,14 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
           <Card style={[styles.emptyCard, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
               <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                Chưa có ca làm việc nào. Hãy tạo ca đầu tiên!
+                {t(currentLanguage, 'shifts.noShifts')}
               </Text>
               <Button
                 mode="contained"
                 onPress={() => navigation.navigate('AddEditShift')}
                 style={styles.createFirstButton}
               >
-                Tạo ca đầu tiên
+                {t(currentLanguage, 'shifts.createFirst')}
               </Button>
             </Card.Content>
           </Card>
@@ -462,7 +466,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
             onPress={handleConfirmRotation}
             style={styles.confirmButton}
           >
-            Xác nhận cấu hình xoay ca
+            {t(currentLanguage, 'shifts.confirmRotationConfig')}
           </Button>
         </View>
       )}

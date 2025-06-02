@@ -205,9 +205,9 @@ export function AppProvider({ children }: AppProviderProps) {
       // Load notes and add sample data if needed
       let notes = await storageService.getNotes();
       if (notes.length === 0) {
-        // Import and add sample data
+        // Import and add sample data với ngôn ngữ từ settings
         const { addSampleNotesToStorage } = await import('../services/sampleData');
-        notes = await addSampleNotesToStorage();
+        notes = await addSampleNotesToStorage(settings.language);
       }
 
       dispatch({ type: 'SET_SETTINGS', payload: settings });

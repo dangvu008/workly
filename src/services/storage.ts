@@ -60,7 +60,15 @@ class StorageService {
 
   // Shifts
   async getShiftList(): Promise<Shift[]> {
-    return this.getItem(STORAGE_KEYS.SHIFT_LIST, DEFAULT_SHIFTS);
+    const shifts = await this.getItem(STORAGE_KEYS.SHIFT_LIST, null);
+    if (shifts === null) {
+      // Khởi tạo shifts theo ngôn ngữ hiện tại
+      const settings = await this.getUserSettings();
+      const defaultShifts = DEFAULT_SHIFTS[settings.language as keyof typeof DEFAULT_SHIFTS] || DEFAULT_SHIFTS.vi;
+      await this.setShiftList(defaultShifts);
+      return defaultShifts;
+    }
+    return shifts;
   }
 
   async setShiftList(shifts: Shift[]): Promise<void> {
@@ -126,6 +134,12 @@ class StorageService {
       allLogs[date] = [];
     }
     allLogs[date].push(log);
+    return this.setAttendanceLogs(allLogs);
+  }
+
+  async setAttendanceLogsForDate(date: string, logs: AttendanceLog[]): Promise<void> {
+    const allLogs = await this.getAttendanceLogs();
+    allLogs[date] = logs;
     return this.setAttendanceLogs(allLogs);
   }
 
@@ -208,7 +222,15 @@ class StorageService {
 
   // Public Holidays
   async getPublicHolidays(): Promise<PublicHoliday[]> {
-    return this.getItem(STORAGE_KEYS.PUBLIC_HOLIDAYS, DEFAULT_HOLIDAYS);
+    const holidays = await this.getItem(STORAGE_KEYS.PUBLIC_HOLIDAYS, null);
+    if (holidays === null) {
+      // Khởi tạo holidays theo ngôn ngữ hiện tại
+      const settings = await this.getUserSettings();
+      const defaultHolidays = DEFAULT_HOLIDAYS[settings.language as keyof typeof DEFAULT_HOLIDAYS] || DEFAULT_HOLIDAYS.vi;
+      await this.setPublicHolidays(defaultHolidays);
+      return defaultHolidays;
+    }
+    return holidays;
   }
 
   async setPublicHolidays(holidays: PublicHoliday[]): Promise<void> {

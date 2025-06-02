@@ -16,6 +16,7 @@ import { useApp } from '../contexts/AppContext';
 import { Shift } from '../types';
 import { RootStackParamList } from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { t } from '../i18n';
 
 type AddEditShiftScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddEditShift'>;
 
@@ -38,6 +39,9 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
   const isEditing = !!shiftId;
 
   const existingShift = isEditing ? state.shifts.find(s => s.id === shiftId) : null;
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   const [formData, setFormData] = useState({
     name: '',
@@ -115,19 +119,19 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
     // Name validation
     if (!formData.name.trim()) {
-      newErrors.name = 'Tên ca là bắt buộc';
+      newErrors.name = t(currentLanguage, 'shifts.validation.nameRequired');
       isValid = false;
     }
 
     // Work days validation
     if (formData.workDays.length === 0) {
-      newErrors.workDays = 'Vui lòng chọn ít nhất một ngày làm việc';
+      newErrors.workDays = t(currentLanguage, 'shifts.validation.workDaysRequired');
       isValid = false;
     }
 
     // Break minutes validation
-    if (formData.breakMinutes < 0) {
-      newErrors.breakMinutes = 'Thời gian nghỉ không thể âm';
+    if (formData.breakMinutes < 0 || formData.breakMinutes > 480) {
+      newErrors.breakMinutes = t(currentLanguage, 'shifts.validation.breakMinutesInvalid');
       isValid = false;
     }
 
@@ -156,12 +160,14 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
       if (isEditing) {
         await actions.updateShift(shiftId!, shiftData);
-        setStatusMessage({ type: 'success', message: '✅ Đã cập nhật ca làm việc thành công!' });
+        setStatusMessage({ type: 'success', message: t(currentLanguage, 'shifts.successUpdated') });
       } else {
         await actions.addShift(shiftData, formData.applyNow);
         setStatusMessage({
           type: 'success',
-          message: `✅ Đã tạo ca làm việc${formData.applyNow ? ' và áp dụng ngay' : ''} thành công!`
+          message: formData.applyNow
+            ? t(currentLanguage, 'shifts.successCreatedAndApplied')
+            : t(currentLanguage, 'shifts.successCreated')
         });
       }
 
@@ -170,7 +176,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         navigation.goBack();
       }, 2000);
     } catch (error) {
-      setStatusMessage({ type: 'error', message: '❌ Không thể lưu ca làm việc. Vui lòng thử lại.' });
+      setStatusMessage({ type: 'error', message: t(currentLanguage, 'shifts.errorSave') });
     }
   };
 
@@ -215,7 +221,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
           onPress={() => navigation.goBack()}
         />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
-          {isEditing ? 'Sửa ca' : 'Tạo ca mới'}
+          {isEditing ? t(currentLanguage, 'shifts.editShiftTitle') : t(currentLanguage, 'shifts.createNew')}
         </Text>
         <View style={{ width: 48 }} />
       </View>
@@ -225,11 +231,11 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Thông tin cơ bản
+              {t(currentLanguage, 'common.basicInfo')}
             </Text>
 
             <TextInput
-              label="Tên ca *"
+              label={`${t(currentLanguage, 'shifts.shiftName')} *`}
               value={formData.name}
               onChangeText={handleNameChange}
               style={styles.input}
@@ -242,7 +248,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
             <View style={styles.row}>
               <TextInput
-                label="Giờ bắt đầu"
+                label={t(currentLanguage, 'shifts.startTime')}
                 value={formData.startTime}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, startTime: text }))}
                 style={[styles.input, styles.halfInput]}
@@ -250,7 +256,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
                 placeholder="HH:MM"
               />
               <TextInput
-                label="Giờ kết thúc"
+                label={t(currentLanguage, 'shifts.endTime')}
                 value={formData.endTime}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, endTime: text }))}
                 style={[styles.input, styles.halfInput]}
@@ -260,7 +266,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             </View>
 
             <TextInput
-              label="Giờ tan làm (chấm công ra)"
+              label={t(currentLanguage, 'shifts.officeEndTime')}
               value={formData.officeEndTime}
               onChangeText={(text) => setFormData(prev => ({ ...prev, officeEndTime: text }))}
               style={styles.input}
@@ -269,7 +275,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             />
 
             <TextInput
-              label="Giờ khởi hành"
+              label={t(currentLanguage, 'shifts.departureTime')}
               value={formData.departureTime}
               onChangeText={(text) => setFormData(prev => ({ ...prev, departureTime: text }))}
               style={styles.input}
@@ -278,7 +284,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             />
 
             <TextInput
-              label="Thời gian nghỉ (phút)"
+              label={t(currentLanguage, 'shifts.breakMinutes')}
               value={formData.breakMinutes.toString()}
               onChangeText={(text) => handleBreakMinutesChange(parseInt(text) || 0)}
               style={styles.input}
@@ -296,7 +302,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Ngày làm việc *
+              {t(currentLanguage, 'shifts.workDays')} *
             </Text>
 
             <View style={styles.daysContainer}>
@@ -323,12 +329,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Tùy chọn
+              {t(currentLanguage, 'shifts.options')}
             </Text>
 
             <View style={styles.switchRow}>
               <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                Ca đêm
+                {t(currentLanguage, 'shifts.night')}
               </Text>
               <Switch
                 value={formData.isNightShift}
@@ -338,7 +344,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
             <View style={styles.switchRow}>
               <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                Yêu cầu ký công
+                {t(currentLanguage, 'modals.punchButton')}
               </Text>
               <Switch
                 value={formData.showPunch}
@@ -349,7 +355,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             {!isEditing && (
               <View style={styles.switchRow}>
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                  Áp dụng ngay
+                  {t(currentLanguage, 'shifts.applyNow')}
                 </Text>
                 <Switch
                   value={formData.applyNow}
@@ -385,14 +391,14 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             onPress={handleReset}
             style={styles.actionButton}
           >
-            Reset
+            {t(currentLanguage, 'modals.reset')}
           </Button>
           <Button
             mode="contained"
             onPress={handleSave}
             style={styles.actionButton}
           >
-            {isEditing ? 'Cập nhật' : 'Tạo ca'}
+            {isEditing ? t(currentLanguage, 'common.edit') : t(currentLanguage, 'shifts.addShift')}
           </Button>
         </View>
       </ScrollView>

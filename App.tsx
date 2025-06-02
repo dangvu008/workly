@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppProvider, useApp } from './src/contexts/AppContext';
 import { lightTheme, darkTheme } from './src/constants/themes';
+import { t } from './src/i18n';
 import { RootStackParamList, TabParamList } from './src/types';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
@@ -27,6 +28,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 function MainTabs() {
   const { state } = useApp();
   const theme = state.settings?.theme === 'dark' ? darkTheme : lightTheme;
+  const currentLanguage = state.settings?.language || 'vi';
 
   return (
     <Tab.Navigator
@@ -64,13 +66,14 @@ function MainTabs() {
           borderTopColor: theme.colors.outline,
           borderTopWidth: 1,
           elevation: 8,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 75, // Tăng chiều cao từ 60 lên 75
+          paddingBottom: 16, // Tăng padding bottom từ 8 lên 16 để tạo khoảng cách với đáy
+          paddingTop: 12, // Tăng padding top từ 8 lên 12 để cân bằng
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
+          marginBottom: 4, // Thêm margin bottom cho text để tạo khoảng cách với đáy
         },
       })}
     >
@@ -78,35 +81,35 @@ function MainTabs() {
         name="HomeTab"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Trang chủ',
+          tabBarLabel: t(currentLanguage, 'navigation.home'),
         }}
       />
       <Tab.Screen
         name="ShiftsTab"
         component={ShiftManagementScreen}
         options={{
-          tabBarLabel: 'Ca làm việc',
+          tabBarLabel: t(currentLanguage, 'navigation.shifts'),
         }}
       />
       <Tab.Screen
         name="NotesTab"
         component={NotesScreen}
         options={{
-          tabBarLabel: 'Ghi chú',
+          tabBarLabel: t(currentLanguage, 'navigation.notes'),
         }}
       />
       <Tab.Screen
         name="StatisticsTab"
         component={StatisticsScreen}
         options={{
-          tabBarLabel: 'Thống kê',
+          tabBarLabel: t(currentLanguage, 'navigation.statistics'),
         }}
       />
       <Tab.Screen
         name="SettingsTab"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Cài đặt',
+          tabBarLabel: t(currentLanguage, 'navigation.settings'),
         }}
       />
     </Tab.Navigator>

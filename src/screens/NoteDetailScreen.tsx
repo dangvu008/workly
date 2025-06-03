@@ -20,7 +20,7 @@ import { Note } from '../types';
 import { RootStackParamList } from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS } from 'date-fns/locale';
 import { t } from '../i18n';
 
 type NoteDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'NoteDetail'>;
@@ -447,7 +447,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                       style={styles.dateTimeButton}
                       icon="calendar"
                     >
-                      📅 {format(formData.reminderDateTime, 'dd/MM/yyyy', { locale: vi })}
+                      📅 {format(formData.reminderDateTime, 'dd/MM/yyyy', { locale: currentLanguage === 'vi' ? vi : enUS })}
                     </Button>
 
                     <Button
@@ -456,7 +456,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                       style={styles.dateTimeButton}
                       icon="clock-outline"
                     >
-                      🕐 {format(formData.reminderDateTime, 'HH:mm', { locale: vi })}
+                      🕐 {format(formData.reminderDateTime, 'HH:mm', { locale: currentLanguage === 'vi' ? vi : enUS })}
                     </Button>
                   </View>
 

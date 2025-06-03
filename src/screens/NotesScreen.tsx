@@ -13,7 +13,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { Note } from '../types';
 import { TabParamList, RootStackParamList } from '../types';
@@ -101,16 +101,16 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
         const diffMs = reminderDate.getTime() - now.getTime();
 
         if (diffMs < 0) {
-          return 'Đã qua';
+          return t(currentLanguage, 'timeDate.passed');
         } else if (diffMs < 24 * 60 * 60 * 1000) {
-          return `Hôm nay ${format(reminderDate, 'HH:mm')}`;
+          return `${t(currentLanguage, 'timeDate.today')} ${format(reminderDate, 'HH:mm')}`;
         } else if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-          return format(reminderDate, 'EEEE HH:mm', { locale: vi });
+          return format(reminderDate, 'EEEE HH:mm', { locale: currentLanguage === 'vi' ? vi : enUS });
         } else {
           return format(reminderDate, 'dd/MM/yyyy HH:mm');
         }
       } catch (error) {
-        return 'Lỗi thời gian';
+        return t(currentLanguage, 'timeDate.timeError');
       }
     }
 
@@ -121,11 +121,11 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       );
 
       if (associatedShifts.length === 0) {
-        return 'Ca đã bị xóa';
+        return t(currentLanguage, 'timeDate.shiftDeleted');
       }
 
       const shiftNames = associatedShifts.map(shift => shift.name).join(', ');
-      return `Theo ca: ${shiftNames}`;
+      return `${t(currentLanguage, 'timeDate.byShift')}: ${shiftNames}`;
     }
 
     return '';
@@ -174,7 +174,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 <View style={styles.noteMetadata}>
                   {reminderText && (
                     <Text style={[styles.reminderText, { color: theme.colors.primary }]}>
-                      Nhắc: {reminderText}
+                      {t(currentLanguage, 'timeDate.remind')}: {reminderText}
                     </Text>
                   )}
                   <Text style={[styles.updatedText, { color: theme.colors.onSurfaceVariant }]}>

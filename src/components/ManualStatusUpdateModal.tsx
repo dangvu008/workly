@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Modal, Portal, Text, Button, useTheme, Menu, TouchableRipple, Card, Divider } from 'react-native-paper';
 import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS } from 'date-fns/locale';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DailyWorkStatus, Shift, AttendanceLog } from '../types';
 import { WEEKLY_STATUS } from '../constants';
 import { TimeEditModal } from './TimeEditModal';
 import { storageService } from '../services/storage';
+import { useApp } from '../contexts/AppContext';
+import { t } from '../i18n';
 
 interface ManualStatusUpdateModalProps {
   visible: boolean;
@@ -46,6 +48,10 @@ export function ManualStatusUpdateModal({
   onClearManualStatus,
 }: ManualStatusUpdateModalProps) {
   const theme = useTheme();
+  const { state } = useApp();
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   // ✅ Tất cả useState hooks phải được khai báo đầu tiên
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
@@ -333,7 +339,7 @@ export function ManualStatusUpdateModal({
     // ✅ Đảm bảo dateObj không null vì đã check ở early return
     if (!dateObj) return null;
 
-    const dayName = format(dateObj, 'EEEE', { locale: vi });
+    const dayName = format(dateObj, 'EEEE', { locale: currentLanguage === 'vi' ? vi : enUS });
     const dateStr = format(dateObj, 'dd/MM/yyyy');
 
     let dateTypeIcon = '';

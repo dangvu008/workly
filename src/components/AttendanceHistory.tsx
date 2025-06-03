@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, useTheme, Divider } from 'react-native-paper';
 import { format, parseISO } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS } from 'date-fns/locale';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
 import { AttendanceLog } from '../types';
@@ -71,7 +71,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
 
   const formatTime = (timeString: string): string => {
     try {
-      return format(parseISO(timeString), 'HH:mm', { locale: currentLanguage === 'vi' ? vi : undefined });
+      return format(parseISO(timeString), 'HH:mm', { locale: currentLanguage === 'vi' ? vi : enUS });
     } catch {
       return '--:--';
     }

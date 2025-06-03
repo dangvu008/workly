@@ -12,8 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
+import { t } from '../i18n';
 import { WEATHER_WARNINGS } from '../constants';
 import { RootStackParamList } from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -29,6 +30,9 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
   const { state, actions } = useApp();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<'home' | 'work'>('home');
+
+  // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
+  const currentLanguage = state.settings?.language || 'vi';
 
   if (!state.settings?.weatherWarningEnabled || !state.weatherData) {
     return (
@@ -183,7 +187,7 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
               </View>
               
               <Text style={styles.lastUpdated}>
-                Cập nhật lúc: {format(new Date(state.weatherData.lastUpdated), 'HH:mm dd/MM/yyyy', { locale: vi })}
+                {t(currentLanguage, 'weather.lastUpdated')}: {format(new Date(state.weatherData.lastUpdated), 'HH:mm dd/MM/yyyy', { locale: currentLanguage === 'vi' ? vi : enUS })}
               </Text>
             </Card.Content>
           </LinearGradient>
@@ -247,7 +251,7 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
                       {warning.message}
                     </Text>
                     <Text style={[styles.warningTime, { color: theme.colors.onErrorContainer }]}>
-                      {format(new Date(warning.time), 'HH:mm dd/MM', { locale: vi })}
+                      {format(new Date(warning.time), 'HH:mm dd/MM', { locale: currentLanguage === 'vi' ? vi : enUS })}
                     </Text>
                   </View>
                 );

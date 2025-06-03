@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert }
 import { Text, Card, IconButton, useTheme, Button, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { MultiFunctionButton, SimpleMultiFunctionButton } from '../components/MultiFunctionButton';
 import { WeeklyStatusGrid } from '../components/WeeklyStatusGrid';
@@ -211,7 +211,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         } else if (diffMs < 24 * 60 * 60 * 1000) {
           return `${t(currentLanguage, 'timeDate.today')} ${format(reminderDate, 'HH:mm')}`;
         } else if (diffMs < 7 * 24 * 60 * 60 * 1000) {
-          return format(reminderDate, 'EEEE HH:mm', { locale: currentLanguage === 'vi' ? vi : undefined });
+          return format(reminderDate, 'EEEE HH:mm', { locale: currentLanguage === 'vi' ? vi : enUS });
         } else {
           return format(reminderDate, 'dd/MM/yyyy HH:mm');
         }
@@ -366,7 +366,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             <View style={[commonStyles.header, styles.header]}>
               <View>
                 <Text style={[styles.dateTime, { color: theme.colors.onSurface }]}>
-                  {format(currentTime, 'EEEE, dd/MM', { locale: vi })}
+                  {format(currentTime, 'EEEE, dd/MM', { locale: currentLanguage === 'vi' ? vi : enUS })}
                 </Text>
                 <Text style={[styles.time, { color: theme.colors.primary }]}>
                   {format(currentTime, 'HH:mm')}

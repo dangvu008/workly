@@ -19,6 +19,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
+import { WorklyBackground } from '../components/WorklyBackground';
 
 
 type SettingsScreenNavigationProp = CompositeNavigationProp<
@@ -156,8 +157,9 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="minimal">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         <View style={{ width: 48 }} />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           {t(currentLanguage, 'settings.title')}
@@ -167,7 +169,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 
       <ScrollView style={styles.scrollView}>
         {/* General Settings */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'settings.general')}
@@ -252,7 +254,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         {/* Notifications */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'settings.notificationsAndAlarms')}
@@ -287,7 +289,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         {/* Weather */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'settings.weather')}
@@ -319,7 +321,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         {/* Data Management */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'settings.dataManagement')}
@@ -342,7 +344,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         {/* Developer/Debug */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'settings.sampleData')}
@@ -367,7 +369,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
 
         {/* Other */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'settings.other')}
@@ -383,7 +385,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
 
         {/* Status Messages */}
         {statusMessage.message && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[
                 styles.statusMessage,
@@ -495,7 +497,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
           </Card>
         )}
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 

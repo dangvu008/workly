@@ -173,6 +173,8 @@ class WorkManager {
 
             if (durationSeconds < settings.rapidPressThresholdSeconds) {
               // Throw exception để UI xử lý confirmation dialog
+              // Đây KHÔNG phải lỗi - đây là flow bình thường để yêu cầu xác nhận từ user
+              console.log('🚀 WorkManager: Rapid press detected, throwing RapidPressDetectedException for UI confirmation');
               throw new RapidPressDetectedException(
                 durationSeconds,
                 settings.rapidPressThresholdSeconds,

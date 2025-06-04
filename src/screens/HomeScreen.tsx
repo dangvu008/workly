@@ -11,10 +11,11 @@ import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
 import { t } from '../i18n';
 import { NotificationStatusBanner } from '../components/NotificationStatusBanner';
-import { AlarmStatusBanner } from '../components/AlarmStatusBanner';
+
 import ExpoGoBanner from '../components/ExpoGoBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
+import { WorklyBackground } from '../components/WorklyBackground';
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -354,16 +355,17 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView
-        style={[styles.scrollView, { padding: responsivePadding }]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
+    <WorklyBackground variant="home">
+      <SafeAreaView style={styles.container}>
+        <ScrollView
+          style={[styles.scrollView, { padding: responsivePadding }]}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header với animation */}
-        <AnimatedCard animationType="fadeIn" delay={0}>
+        <AnimatedCard animationType="fadeIn" delay={0} backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <View style={[commonStyles.header, styles.header]}>
               <View>
@@ -388,18 +390,13 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           <NotificationStatusBanner />
         </AnimatedCard>
 
-        {/* Alarm Status Banner - Hiển thị trạng thái hệ thống báo thức */}
-        <AnimatedCard animationType="slideUp" delay={60}>
-          <AlarmStatusBanner />
-        </AnimatedCard>
-
         {/* Weather Widget với animation */}
         <AnimatedCard animationType="slideUp" delay={100}>
           <MemoizedWeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
         </AnimatedCard>
 
         {/* Active Shift với animation */}
-        <AnimatedCard animationType="slideUp" delay={200} elevated>
+        <AnimatedCard animationType="slideUp" delay={200} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <View style={styles.shiftHeader}>
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
@@ -435,7 +432,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
         {/* Attendance History - Show below Multi-Function Button */}
         {state.activeShift && (
-          <AnimatedCard animationType="slideUp" delay={400} style={styles.attendanceHistoryCard}>
+          <AnimatedCard animationType="slideUp" delay={400} style={styles.attendanceHistoryCard} backgroundColor={theme.colors.surfaceVariant}>
             <Card.Content>
               <MemoizedAttendanceHistory />
             </Card.Content>
@@ -443,7 +440,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         )}
 
         {/* Weekly Status Grid với animation */}
-        <AnimatedCard animationType="slideUp" delay={500} elevated>
+        <AnimatedCard animationType="slideUp" delay={500} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <MemoizedWeeklyStatusGrid onDayPress={() => {
               // Day press handled by WeeklyStatusGrid internally
@@ -452,7 +449,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         </AnimatedCard>
 
         {/* Notes Section với animation */}
-        <AnimatedCard animationType="slideUp" delay={600} elevated>
+        <AnimatedCard animationType="slideUp" delay={600} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
             <View style={styles.notesHeader}>
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
@@ -573,10 +570,9 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             </Button>
           </Card.Content>
         </AnimatedCard>
-      </ScrollView>
-
-
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 

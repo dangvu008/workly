@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { 
-  Text, 
-  Card, 
-  IconButton, 
+import {
+  Text,
+  Card,
+  IconButton,
   useTheme,
   Button,
   Chip,
   Divider
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WorklyBackground } from '../components/WorklyBackground';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { vi, enUS } from 'date-fns/locale';
@@ -36,12 +37,20 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
 
   if (!state.settings?.weatherWarningEnabled || !state.weatherData) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.header}>
+      <WorklyBackground variant="form">
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
           <IconButton
             icon="arrow-left"
             size={24}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                // Fallback: navigate to HomeTab if can't go back
+                navigation.navigate('MainTabs', { screen: 'HomeTab' });
+              }
+            }}
           />
           <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
             Thời tiết
@@ -61,7 +70,8 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
             Đi đến Cài đặt
           </Button>
         </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </WorklyBackground>
     );
   }
 
@@ -111,12 +121,20 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
   const currentLocationWarnings = getLocationWarnings(selectedLocation);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="form">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              // Fallback: navigate to HomeTab if can't go back
+              navigation.navigate('MainTabs', { screen: 'HomeTab' });
+            }
+          }}
         />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           Chi tiết thời tiết
@@ -132,7 +150,7 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
       <ScrollView style={styles.scrollView}>
         {/* Location Selector */}
         {hasMultipleLocations && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
                 Chọn vị trí
@@ -160,7 +178,7 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
         )}
 
         {/* Current Weather */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface, overflow: 'hidden' }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant, overflow: 'hidden' }]}>
           <LinearGradient
             colors={getGradientColors()}
             style={styles.weatherGradient}
@@ -195,7 +213,7 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
 
         {/* Forecast */}
         {forecast && forecast.length > 0 && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
                 Dự báo chi tiết
@@ -261,7 +279,7 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
         )}
 
         {/* Weather Info */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               Thông tin thêm
@@ -320,7 +338,8 @@ export function WeatherDetailScreen({ navigation }: WeatherDetailScreenProps) {
           </Button>
         </View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 

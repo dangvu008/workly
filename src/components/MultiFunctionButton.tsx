@@ -185,18 +185,10 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
       onPress?.();
     } catch (error) {
-      console.error('Error in button press:', error);
-      console.log('🔍 MultiFunctionButton: Error details:', {
-        errorType: typeof error,
-        errorName: (error as any)?.name,
-        errorMessage: (error as any)?.message,
-        isError: error instanceof Error,
-        isRapidPress: (error as any)?.name === 'RapidPressDetectedException'
-      });
-
-      // Kiểm tra nếu là RapidPressDetectedException - sử dụng cách kiểm tra đơn giản hơn
+      // Kiểm tra nếu là RapidPressDetectedException trước - đây không phải lỗi thực sự
       if ((error as any)?.name === 'RapidPressDetectedException') {
-        console.log('🚀 MultiFunctionButton: Detected RapidPressDetectedException, showing confirmation dialog');
+        console.log('🚀 MultiFunctionButton: Detected RapidPressDetectedException - showing confirmation dialog');
+        // Không log như error vì đây là flow bình thường
         const rapidError = error as any; // Type assertion để truy cập properties
 
         console.log('🚀 MultiFunctionButton: RapidError details:', {
@@ -257,7 +249,15 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
           ]
         );
       } else {
-        // Lỗi khác
+        // Lỗi thực sự - log và hiển thị cho user
+        console.error('Error in button press:', error);
+        console.log('🔍 MultiFunctionButton: Error details:', {
+          errorType: typeof error,
+          errorName: (error as any)?.name,
+          errorMessage: (error as any)?.message,
+          isError: error instanceof Error
+        });
+
         Alert.alert(
           t(currentLanguage, 'common.error'),
           t(currentLanguage, 'common.error') + ': Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại.',
@@ -510,18 +510,17 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
       await actions.handleButtonPress();
       onPress?.();
     } catch (error) {
-      console.error('Error in simple button press:', error);
-
       // Simple mode không nên có RapidPressDetectedException vì chỉ có một action duy nhất
       // Nếu vẫn xảy ra, chỉ log và hiển thị lỗi chung
-      if (error instanceof Error && error.name === 'RapidPressDetectedException') {
+      if ((error as any)?.name === 'RapidPressDetectedException') {
         console.warn('⚠️ RapidPressDetectedException in Simple mode - this should not happen');
         Alert.alert(
           t(currentLanguage, 'common.error'),
           'Simple mode không hỗ trợ rapid press detection. Vui lòng chuyển sang Full mode.'
         );
       } else {
-        // Lỗi khác
+        // Lỗi thực sự
+        console.error('Error in simple button press:', error);
         Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
       }
     } finally {

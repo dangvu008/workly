@@ -13,6 +13,7 @@ import {
   RadioButton
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WorklyBackground } from '../components/WorklyBackground';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
 import { useApp } from '../contexts/AppContext';
@@ -283,8 +284,9 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="form">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         <IconButton
           icon="arrow-left"
           size={24}
@@ -316,7 +318,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
 
       <ScrollView style={styles.scrollView}>
         {/* Basic Info */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               Thông tin ghi chú
@@ -378,7 +380,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
         </Card>
 
         {/* Reminder */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'notes.reminderTime')}
@@ -432,7 +434,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
 
         {/* Specific Date/Time or Shift Selection */}
         {formData.hasReminder && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               {formData.reminderType === 'specific' ? (
                 <>
@@ -530,7 +532,7 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
 
         {/* Status Messages */}
         {statusMessage.message && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[
                 styles.statusMessage,
@@ -615,7 +617,8 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
           is24Hour={true}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 

@@ -391,78 +391,210 @@ export const NOTIFICATION_CATEGORIES = {
 export const DEFAULT_SHIFTS = {
   vi: [
     {
-      id: 'shift_morning',
-      name: 'Ca Sáng',
-      startTime: '08:00',
-      endTime: '17:00',
-      officeEndTime: '17:00',
+      id: 'shift_uuid_001',
+      name: 'Ca 1 (Sáng)',
+      startTime: '06:00',
+      officeEndTime: '14:00',
+      endTime: '14:30',
+      departureTime: '05:15', // Trước startTime 45 phút
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      remindBeforeStart: 15,
+      remindAfterEnd: 10,
+      showPunch: false,
       breakMinutes: 60,
-      showPunch: false,
-      departureTime: '07:30',
       isNightShift: false,
-      workDays: [1, 2, 3, 4, 5], // Monday to Friday
+      workDays: [1, 2, 3, 4, 5, 6], // Monday to Saturday
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
-      id: 'shift_afternoon',
-      name: 'Ca Chiều',
+      id: 'shift_uuid_002',
+      name: 'Ca 2 (Chiều)',
       startTime: '14:00',
-      endTime: '22:00',
       officeEndTime: '22:00',
-      breakMinutes: 30,
+      endTime: '22:30',
+      departureTime: '13:15', // Trước startTime 45 phút
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      remindBeforeStart: 15,
+      remindAfterEnd: 10,
       showPunch: false,
-      departureTime: '13:30',
+      breakMinutes: 60,
       isNightShift: false,
-      workDays: [1, 2, 3, 4, 5],
+      workDays: [1, 2, 3, 4, 5, 6],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
-      id: 'shift_night',
-      name: 'Ca Đêm',
+      id: 'shift_uuid_003',
+      name: 'Ca 3 (Đêm)', // Ca qua đêm
       startTime: '22:00',
-      endTime: '06:00',
-      officeEndTime: '06:00',
-      breakMinutes: 30,
-      showPunch: false,
-      departureTime: '21:30',
+      officeEndTime: '06:00', // Sáng hôm sau
+      endTime: '06:30',       // Sáng hôm sau
+      departureTime: '21:15', // Trước startTime 45 phút
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], // Làm cả T7 đêm
+      remindBeforeStart: 20,
+      remindAfterEnd: 15,
+      showPunch: true,
+      breakMinutes: 60,
       isNightShift: true,
-      workDays: [1, 2, 3, 4, 5],
+      workDays: [1, 2, 3, 4, 5, 6],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'shift_uuid_hc',
+      name: 'Ca Hành Chính',
+      startTime: '08:00',
+      officeEndTime: '17:00',
+      endTime: '17:30',
+      departureTime: '07:00', // Trước startTime 1 tiếng
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], // Làm cả T7
+      remindBeforeStart: 15,
+      remindAfterEnd: 15,
+      showPunch: false,
+      breakMinutes: 60,
+      isNightShift: false,
+      workDays: [1, 2, 3, 4, 5, 6],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'shift_uuid_ngay_linh_hoat',
+      name: 'Ca Ngày Linh Hoạt',
+      startTime: '09:00',
+      officeEndTime: '18:00',
+      endTime: '19:00',
+      departureTime: '08:15', // Trước startTime 45 phút
+      daysApplied: ['Tue', 'Wed', 'Thu', 'Sat'], // Ví dụ làm T3,4,5, T7
+      remindBeforeStart: 10,
+      remindAfterEnd: 5,
+      showPunch: false,
+      breakMinutes: 60,
+      isNightShift: false,
+      workDays: [2, 3, 4, 6], // Tuesday, Wednesday, Thursday, Saturday
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'shift_uuid_dem_cuoi_tuan',
+      name: 'Ca Đêm Cuối Tuần',
+      startTime: '20:00', // Ví dụ làm từ 20h T7 đến 4h sáng CN
+      officeEndTime: '04:00',
+      endTime: '05:00',
+      departureTime: '19:00', // Trước startTime 1 tiếng
+      daysApplied: ['Sat'], // Chỉ áp dụng cho ngày Thứ 7
+      remindBeforeStart: 15,
+      remindAfterEnd: 15,
+      showPunch: true,
+      breakMinutes: 60,
+      isNightShift: true,
+      workDays: [6], // Saturday only
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
   ],
   en: [
     {
-      id: 'shift_morning',
-      name: 'Morning Shift',
-      startTime: '08:00',
-      endTime: '17:00',
-      officeEndTime: '17:00',
+      id: 'shift_uuid_001',
+      name: 'Shift 1 (Morning)',
+      startTime: '06:00',
+      officeEndTime: '14:00',
+      endTime: '14:30',
+      departureTime: '05:15', // 45 minutes before startTime
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      remindBeforeStart: 15,
+      remindAfterEnd: 10,
+      showPunch: false,
       breakMinutes: 60,
-      showPunch: false,
-      departureTime: '07:30',
       isNightShift: false,
-      workDays: [1, 2, 3, 4, 5], // Monday to Friday
+      workDays: [1, 2, 3, 4, 5, 6], // Monday to Saturday
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
-      id: 'shift_afternoon',
-      name: 'Afternoon Shift',
+      id: 'shift_uuid_002',
+      name: 'Shift 2 (Afternoon)',
       startTime: '14:00',
-      endTime: '22:00',
       officeEndTime: '22:00',
-      breakMinutes: 30,
+      endTime: '22:30',
+      departureTime: '13:15', // 45 minutes before startTime
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      remindBeforeStart: 15,
+      remindAfterEnd: 10,
       showPunch: false,
-      departureTime: '13:30',
+      breakMinutes: 60,
       isNightShift: false,
-      workDays: [1, 2, 3, 4, 5],
+      workDays: [1, 2, 3, 4, 5, 6],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
-      id: 'shift_night',
-      name: 'Night Shift',
+      id: 'shift_uuid_003',
+      name: 'Shift 3 (Night)', // Overnight shift
       startTime: '22:00',
-      endTime: '06:00',
-      officeEndTime: '06:00',
-      breakMinutes: 30,
-      showPunch: false,
-      departureTime: '21:30',
+      officeEndTime: '06:00', // Next morning
+      endTime: '06:30',       // Next morning
+      departureTime: '21:15', // 45 minutes before startTime
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], // Including Saturday night
+      remindBeforeStart: 20,
+      remindAfterEnd: 15,
+      showPunch: true,
+      breakMinutes: 60,
       isNightShift: true,
-      workDays: [1, 2, 3, 4, 5],
+      workDays: [1, 2, 3, 4, 5, 6],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'shift_uuid_hc',
+      name: 'Administrative Shift',
+      startTime: '08:00',
+      officeEndTime: '17:00',
+      endTime: '17:30',
+      departureTime: '07:00', // 1 hour before startTime
+      daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], // Including Saturday
+      remindBeforeStart: 15,
+      remindAfterEnd: 15,
+      showPunch: false,
+      breakMinutes: 60,
+      isNightShift: false,
+      workDays: [1, 2, 3, 4, 5, 6],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'shift_uuid_ngay_linh_hoat',
+      name: 'Flexible Day Shift',
+      startTime: '09:00',
+      officeEndTime: '18:00',
+      endTime: '19:00',
+      departureTime: '08:15', // 45 minutes before startTime
+      daysApplied: ['Tue', 'Wed', 'Thu', 'Sat'], // Example: Tue, Wed, Thu, Sat
+      remindBeforeStart: 10,
+      remindAfterEnd: 5,
+      showPunch: false,
+      breakMinutes: 60,
+      isNightShift: false,
+      workDays: [2, 3, 4, 6], // Tuesday, Wednesday, Thursday, Saturday
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'shift_uuid_dem_cuoi_tuan',
+      name: 'Weekend Night Shift',
+      startTime: '20:00', // Example: 8 PM Saturday to 4 AM Sunday
+      officeEndTime: '04:00',
+      endTime: '05:00',
+      departureTime: '19:00', // 1 hour before startTime
+      daysApplied: ['Sat'], // Only applies to Saturday
+      remindBeforeStart: 15,
+      remindAfterEnd: 15,
+      showPunch: true,
+      breakMinutes: 60,
+      isNightShift: true,
+      workDays: [6], // Saturday only
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
   ],
 } as const;

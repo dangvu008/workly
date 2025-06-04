@@ -39,7 +39,7 @@ export const LoadingSpinner = React.memo<LoadingSpinnerProps>(({
     <Animated.View style={[containerStyle, { opacity: fadeAnim }]}>
       <View style={[
         styles.content,
-        { backgroundColor: overlay ? theme.colors.surface : 'transparent' }
+        { backgroundColor: overlay ? theme.colors.surfaceVariant : 'transparent' }
       ]}>
         <ActivityIndicator
           size={size}

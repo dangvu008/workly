@@ -21,6 +21,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
+import { WorklyBackground } from '../components/WorklyBackground';
 
 type ShiftManagementScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'ShiftsTab'>,
@@ -41,6 +42,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
   const { state, actions } = useApp();
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
   const [frequencyMenuVisible, setFrequencyMenuVisible] = useState(false);
+  const [modeMenuVisible, setModeMenuVisible] = useState(false);
 
   const isRotationMode = route.params?.mode === 'select_rotation';
   const settings = state.settings;
@@ -180,7 +182,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
         key={shift.id}
         style={[
           styles.shiftCard,
-          { backgroundColor: theme.colors.surface },
+          { backgroundColor: theme.colors.surfaceVariant },
           (isActive || isSelected) && {
             borderColor: theme.colors.primary,
             borderWidth: 2
@@ -247,29 +249,40 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
             )}
           </View>
 
-          <Button
-            mode={isActive || isSelected ? "contained" : "outlined"}
-            onPress={() => handleSelectShift(shift.id)}
-            style={styles.selectButton}
-          >
-            {isRotationMode
-              ? (isSelected ? t(currentLanguage, 'shifts.selected') : t(currentLanguage, 'shifts.choose'))
-              : (isActive ? t(currentLanguage, 'shifts.currentlyUsing') : t(currentLanguage, 'shifts.selectThis'))
-            }
-          </Button>
+          {/* Chỉ hiển thị button khi không phải ca đang áp dụng hoặc đang ở rotation mode */}
+          {(!isActive || isRotationMode) && (
+            <Button
+              mode={isSelected ? "contained" : "outlined"}
+              onPress={() => handleSelectShift(shift.id)}
+              style={styles.selectButton}
+            >
+              {isRotationMode
+                ? (isSelected ? t(currentLanguage, 'shifts.selected') : t(currentLanguage, 'shifts.choose'))
+                : t(currentLanguage, 'shifts.selectThis')
+              }
+            </Button>
+          )}
         </Card.Content>
       </Card>
     );
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="default">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         {isRotationMode ? (
           <IconButton
             icon="arrow-left"
             size={24}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                // Fallback: navigate to ShiftsTab if can't go back
+                navigation.navigate('MainTabs', { screen: 'ShiftsTab' });
+              }
+            }}
           />
         ) : (
           <View style={{ width: 48 }} />
@@ -293,7 +306,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
       <ScrollView style={styles.scrollView}>
         {/* Shift Mode Configuration - Only show in normal mode */}
         {!isRotationMode && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
                 {t(currentLanguage, 'shifts.shiftModeConfig')}
@@ -305,31 +318,65 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
                   {t(currentLanguage, 'shifts.mainMode')}
                 </Text>
 
-                <RadioButton.Group
-                  onValueChange={(value) => handleModeChange(value as any)}
-                  value={settings?.changeShiftReminderMode || 'disabled'}
+                <Menu
+                  visible={modeMenuVisible}
+                  onDismiss={() => setModeMenuVisible(false)}
+                  anchor={
+                    <Button
+                      mode="outlined"
+                      onPress={() => setModeMenuVisible(true)}
+                      style={styles.modeButton}
+                      icon="cog"
+                      contentStyle={styles.modeButtonContent}
+                    >
+                      {(() => {
+                        switch (settings?.changeShiftReminderMode) {
+                          case 'disabled': return t(currentLanguage, 'shifts.disabled');
+                          case 'ask_weekly': return t(currentLanguage, 'shifts.askWeekly');
+                          case 'rotate': return t(currentLanguage, 'shifts.rotate');
+                          default: return t(currentLanguage, 'shifts.disabled');
+                        }
+                      })()} ▼
+                    </Button>
+                  }
                 >
-                  <View style={styles.radioItem}>
-                    <RadioButton value="disabled" />
-                    <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      {t(currentLanguage, 'shifts.disabled')}
-                    </Text>
-                  </View>
+                  <Menu.Item
+                    onPress={() => {
+                      handleModeChange('disabled');
+                      setModeMenuVisible(false);
+                    }}
+                    title={t(currentLanguage, 'shifts.disabled')}
+                    leadingIcon="close-circle"
+                  />
+                  <Menu.Item
+                    onPress={() => {
+                      handleModeChange('ask_weekly');
+                      setModeMenuVisible(false);
+                    }}
+                    title={t(currentLanguage, 'shifts.askWeekly')}
+                    leadingIcon="bell-outline"
+                  />
+                  <Menu.Item
+                    onPress={() => {
+                      handleModeChange('rotate');
+                      setModeMenuVisible(false);
+                    }}
+                    title={t(currentLanguage, 'shifts.rotate')}
+                    leadingIcon="rotate-3d-variant"
+                  />
+                </Menu>
 
-                  <View style={styles.radioItem}>
-                    <RadioButton value="ask_weekly" />
-                    <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      {t(currentLanguage, 'shifts.askWeekly')}
-                    </Text>
-                  </View>
-
-                  <View style={styles.radioItem}>
-                    <RadioButton value="rotate" />
-                    <Text style={[styles.radioLabel, { color: theme.colors.onSurface }]}>
-                      {t(currentLanguage, 'shifts.rotate')}
-                    </Text>
-                  </View>
-                </RadioButton.Group>
+                {/* Mode Description */}
+                <Text style={[styles.modeDescription, { color: theme.colors.onSurfaceVariant }]}>
+                  {(() => {
+                    switch (settings?.changeShiftReminderMode) {
+                      case 'disabled': return t(currentLanguage, 'shifts.disabledDesc');
+                      case 'ask_weekly': return t(currentLanguage, 'shifts.askWeeklyDesc');
+                      case 'rotate': return t(currentLanguage, 'shifts.rotateDesc');
+                      default: return t(currentLanguage, 'shifts.disabledDesc');
+                    }
+                  })()}
+                </Text>
               </View>
 
               {/* Rotation Configuration - Only show when rotate mode is selected */}
@@ -442,7 +489,7 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
         {state.shifts.length > 0 ? (
           state.shifts.map(renderShiftItem)
         ) : (
-          <Card style={[styles.emptyCard, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.emptyCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
                 {t(currentLanguage, 'shifts.noShifts')}
@@ -478,7 +525,8 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
           onPress={() => navigation.navigate('AddEditShift')}
         />
       )}
-    </SafeAreaView>
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 
@@ -603,15 +651,20 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 12,
   },
-  radioItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  modeButton: {
+    alignSelf: 'flex-start',
+    minWidth: 200,
     marginBottom: 8,
   },
-  radioLabel: {
-    fontSize: 14,
-    flex: 1,
-    marginLeft: 8,
+  modeButtonContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  modeDescription: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
+    lineHeight: 16,
   },
   rotationConfig: {
     marginTop: 16,

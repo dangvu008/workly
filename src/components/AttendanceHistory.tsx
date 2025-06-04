@@ -83,7 +83,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Text style={[styles.title, { color: theme.colors.onSurface }]}>
         {t(currentLanguage, 'attendanceHistory.title')}
       </Text>

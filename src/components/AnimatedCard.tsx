@@ -10,6 +10,7 @@ interface AnimatedCardProps {
   animationType?: 'fadeIn' | 'slideUp' | 'scale';
   elevated?: boolean;
   onPress?: () => void;
+  backgroundColor?: string; // Cho phép tùy chỉnh màu nền
 }
 
 /**
@@ -22,7 +23,8 @@ export const AnimatedCard = React.memo<AnimatedCardProps>(({
   delay = 0,
   animationType = 'fadeIn',
   elevated = false,
-  onPress
+  onPress,
+  backgroundColor
 }) => {
   const theme = useTheme();
   const animatedValue = React.useRef(new Animated.Value(0)).current;
@@ -80,7 +82,7 @@ export const AnimatedCard = React.memo<AnimatedCardProps>(({
       <Card
         style={[
           cardStyle,
-          { backgroundColor: theme.colors.surface },
+          { backgroundColor: backgroundColor || theme.colors.surface },
           style
         ]}
         onPress={onPress}

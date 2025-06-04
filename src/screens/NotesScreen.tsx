@@ -17,6 +17,7 @@ import { vi, enUS } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { Note } from '../types';
 import { TabParamList, RootStackParamList } from '../types';
+import { WorklyBackground } from '../components/WorklyBackground';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -139,7 +140,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
         <Card
           style={[
             styles.noteCard,
-            { backgroundColor: theme.colors.surface },
+            { backgroundColor: theme.colors.surfaceVariant },
             note.isPriority && { borderLeftWidth: 4, borderLeftColor: theme.colors.primary }
           ]}
           onPress={() => navigation.navigate('NoteDetail', { noteId: note.id })}
@@ -205,8 +206,9 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
   const sortedNotes = getSortedAndFilteredNotes();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="default">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         <View style={{ width: 48 }} />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           {t(currentLanguage, 'notes.title')}
@@ -325,7 +327,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
           }
           onChangeText={setSearchQuery}
           value={searchQuery}
-          style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}
+          style={[styles.searchBar, { backgroundColor: theme.colors.surfaceVariant }]}
           inputStyle={{ color: theme.colors.onSurface }}
           iconColor={theme.colors.onSurfaceVariant}
         />
@@ -335,7 +337,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
         {sortedNotes.length > 0 ? (
           sortedNotes.map((note, index) => renderNoteItem(note, index))
         ) : (
-          <Card style={[styles.emptyCard, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.emptyCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               {searchQuery.trim() ? (
                 <>
@@ -375,12 +377,13 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
         )}
       </ScrollView>
 
-      <FAB
-        icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => navigation.navigate('NoteDetail', {})}
-      />
-    </SafeAreaView>
+        <FAB
+          icon="plus"
+          style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+          onPress={() => navigation.navigate('NoteDetail', {})}
+        />
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 

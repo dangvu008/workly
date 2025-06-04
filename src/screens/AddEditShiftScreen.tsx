@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform, TouchableOpacity, Alert } from 'react-native';
 import {
   Text,
   TextInput,
@@ -12,6 +12,9 @@ import {
   HelperText
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { WorklyBackground } from '../components/WorklyBackground';
 import { useApp } from '../contexts/AppContext';
 import { Shift } from '../types';
 import { RootStackParamList } from '../types';
@@ -48,11 +51,14 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     startTime: '08:00',
     endTime: '17:00',
     officeEndTime: '17:00',
-    breakMinutes: 60,
-    showPunch: false,
     departureTime: '07:30',
+    daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], // Monday to Saturday
+    remindBeforeStart: 15,
+    remindAfterEnd: 10,
+    showPunch: false,
+    breakMinutes: 60,
     isNightShift: false,
-    workDays: [1, 2, 3, 4, 5], // Monday to Friday
+    workDays: [1, 2, 3, 4, 5, 6], // Monday to Saturday (for backward compatibility)
     applyNow: applyImmediately,
   });
 
@@ -61,6 +67,9 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     name: '',
     workDays: '',
     breakMinutes: '',
+    remindBeforeStart: '',
+    remindAfterEnd: '',
+    departureTime: '',
   });
 
   // Status messages
@@ -69,6 +78,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     message: string;
   }>({ type: '', message: '' });
 
+  // Time picker states
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [showOfficeEndTimePicker, setShowOfficeEndTimePicker] = useState(false);
+  const [showDepartureTimePicker, setShowDepartureTimePicker] = useState(false);
+
   useEffect(() => {
     if (existingShift) {
       setFormData({
@@ -76,9 +91,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         startTime: existingShift.startTime,
         endTime: existingShift.endTime,
         officeEndTime: existingShift.officeEndTime,
-        breakMinutes: existingShift.breakMinutes,
-        showPunch: existingShift.showPunch,
         departureTime: existingShift.departureTime,
+        daysApplied: existingShift.daysApplied || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        remindBeforeStart: existingShift.remindBeforeStart || 15,
+        remindAfterEnd: existingShift.remindAfterEnd || 10,
+        showPunch: existingShift.showPunch,
+        breakMinutes: existingShift.breakMinutes,
         isNightShift: existingShift.isNightShift,
         workDays: existingShift.workDays,
         applyNow: false,
@@ -86,13 +104,33 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     }
   }, [existingShift]);
 
-  const handleWorkDayToggle = (day: number) => {
-    setFormData(prev => ({
-      ...prev,
-      workDays: prev.workDays.includes(day)
-        ? prev.workDays.filter(d => d !== day)
-        : [...prev.workDays, day].sort()
-    }));
+  // Helper function to handle daysApplied toggle
+  const handleDaysAppliedToggle = (dayString: string) => {
+    const dayMap: { [key: string]: number } = {
+      'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+    };
+
+    setFormData(prev => {
+      const isCurrentlySelected = prev.daysApplied.includes(dayString);
+      const newDaysApplied = isCurrentlySelected
+        ? prev.daysApplied.filter(d => d !== dayString)
+        : [...prev.daysApplied, dayString].sort((a, b) => {
+          const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          return order.indexOf(a) - order.indexOf(b);
+        });
+
+      // Also update workDays for backward compatibility
+      const newWorkDays = isCurrentlySelected
+        ? prev.workDays.filter(d => d !== dayMap[dayString])
+        : [...prev.workDays, dayMap[dayString]].sort();
+
+      return {
+        ...prev,
+        daysApplied: newDaysApplied,
+        workDays: newWorkDays
+      };
+    });
+
     // Clear work days error when user makes changes
     setErrors(prev => ({ ...prev, workDays: '' }));
   };
@@ -108,11 +146,109 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     setErrors(prev => ({ ...prev, breakMinutes: '' }));
   };
 
+  // Helper functions for time picker
+  const timeStringToDate = (timeString: string): Date => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  };
+
+  const dateToTimeString = (date: Date): string => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  // Time picker handlers
+  const handleStartTimeChange = (event: any, selectedDate?: Date) => {
+    setShowStartTimePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const timeString = dateToTimeString(selectedDate);
+      setFormData(prev => ({ ...prev, startTime: timeString }));
+    }
+  };
+
+  const handleEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowEndTimePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const timeString = dateToTimeString(selectedDate);
+      setFormData(prev => ({ ...prev, endTime: timeString }));
+    }
+  };
+
+  const handleOfficeEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowOfficeEndTimePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const timeString = dateToTimeString(selectedDate);
+      setFormData(prev => ({ ...prev, officeEndTime: timeString }));
+    }
+  };
+
+  const handleDepartureTimeChange = (event: any, selectedDate?: Date) => {
+    setShowDepartureTimePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const timeString = dateToTimeString(selectedDate);
+      setFormData(prev => ({ ...prev, departureTime: timeString }));
+      setErrors(prev => ({ ...prev, departureTime: '' }));
+    }
+  };
+
+  // TimePickerField component
+  const TimePickerField = ({
+    label,
+    value,
+    onPress,
+    error = false,
+    style = {}
+  }: {
+    label: string;
+    value: string;
+    onPress: () => void;
+    error?: boolean;
+    style?: any;
+  }) => (
+    <TouchableOpacity
+      style={[
+        styles.timePickerField,
+        {
+          borderColor: error ? theme.colors.error : theme.colors.outline,
+          backgroundColor: theme.colors.surface,
+        },
+        style
+      ]}
+      onPress={onPress}
+    >
+      <Text style={[styles.timePickerLabel, { color: theme.colors.onSurfaceVariant }]}>
+        {label}
+      </Text>
+      <View style={styles.timePickerContent}>
+        <MaterialCommunityIcons
+          name="clock-outline"
+          size={20}
+          color={theme.colors.onSurfaceVariant}
+          style={styles.timeIcon}
+        />
+        <Text style={[styles.timePickerValue, { color: theme.colors.onSurface }]}>
+          {value}
+        </Text>
+        <MaterialCommunityIcons
+          name="chevron-down"
+          size={20}
+          color={theme.colors.onSurfaceVariant}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+
   const validateForm = (): boolean => {
     const newErrors = {
       name: '',
       workDays: '',
       breakMinutes: '',
+      remindBeforeStart: '',
+      remindAfterEnd: '',
+      departureTime: '',
     };
 
     let isValid = true;
@@ -124,7 +260,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     }
 
     // Work days validation
-    if (formData.workDays.length === 0) {
+    if (formData.daysApplied.length === 0) {
       newErrors.workDays = t(currentLanguage, 'shifts.validation.workDaysRequired');
       isValid = false;
     }
@@ -132,6 +268,26 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     // Break minutes validation
     if (formData.breakMinutes < 0 || formData.breakMinutes > 480) {
       newErrors.breakMinutes = t(currentLanguage, 'shifts.validation.breakMinutesInvalid');
+      isValid = false;
+    }
+
+    // Remind before start validation
+    if (formData.remindBeforeStart < 0 || formData.remindBeforeStart > 120) {
+      newErrors.remindBeforeStart = t(currentLanguage, 'shifts.validation.remindBeforeStartInvalid');
+      isValid = false;
+    }
+
+    // Remind after end validation
+    if (formData.remindAfterEnd < 0 || formData.remindAfterEnd > 120) {
+      newErrors.remindAfterEnd = t(currentLanguage, 'shifts.validation.remindAfterEndInvalid');
+      isValid = false;
+    }
+
+    // Departure time validation - should be before start time
+    const departureMinutes = parseInt(formData.departureTime.split(':')[0]) * 60 + parseInt(formData.departureTime.split(':')[1]);
+    const startMinutes = parseInt(formData.startTime.split(':')[0]) * 60 + parseInt(formData.startTime.split(':')[1]);
+    if (departureMinutes >= startMinutes) {
+      newErrors.departureTime = t(currentLanguage, 'shifts.validation.departureTimeInvalid');
       isValid = false;
     }
 
@@ -151,11 +307,16 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         startTime: formData.startTime,
         endTime: formData.endTime,
         officeEndTime: formData.officeEndTime,
-        breakMinutes: formData.breakMinutes,
-        showPunch: formData.showPunch,
         departureTime: formData.departureTime,
+        daysApplied: formData.daysApplied,
+        remindBeforeStart: formData.remindBeforeStart,
+        remindAfterEnd: formData.remindAfterEnd,
+        showPunch: formData.showPunch,
+        breakMinutes: formData.breakMinutes,
         isNightShift: formData.isNightShift,
         workDays: formData.workDays,
+        createdAt: isEditing ? existingShift?.createdAt || new Date().toISOString() : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       if (isEditing) {
@@ -173,7 +334,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
       // Auto navigate back after 2 seconds
       setTimeout(() => {
-        navigation.goBack();
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          // Fallback: navigate to ShiftsTab if can't go back
+          navigation.navigate('MainTabs', { screen: 'ShiftsTab' });
+        }
       }, 2000);
     } catch (error) {
       setStatusMessage({ type: 'error', message: t(currentLanguage, 'shifts.errorSave') });
@@ -187,9 +353,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         startTime: existingShift.startTime,
         endTime: existingShift.endTime,
         officeEndTime: existingShift.officeEndTime,
-        breakMinutes: existingShift.breakMinutes,
-        showPunch: existingShift.showPunch,
         departureTime: existingShift.departureTime,
+        daysApplied: existingShift.daysApplied || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        remindBeforeStart: existingShift.remindBeforeStart || 15,
+        remindAfterEnd: existingShift.remindAfterEnd || 10,
+        showPunch: existingShift.showPunch,
+        breakMinutes: existingShift.breakMinutes,
         isNightShift: existingShift.isNightShift,
         workDays: existingShift.workDays,
         applyNow: false,
@@ -200,25 +369,34 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         startTime: '08:00',
         endTime: '17:00',
         officeEndTime: '17:00',
-        breakMinutes: 60,
-        showPunch: false,
         departureTime: '07:30',
+        daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        remindBeforeStart: 15,
+        remindAfterEnd: 10,
+        showPunch: false,
+        breakMinutes: 60,
         isNightShift: false,
-        workDays: [1, 2, 3, 4, 5],
+        workDays: [1, 2, 3, 4, 5, 6],
         applyNow: applyImmediately,
       });
     }
   };
 
-  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="form">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         <IconButton
           icon="arrow-left"
           size={24}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              // Fallback: navigate to ShiftsTab if can't go back
+              navigation.navigate('MainTabs', { screen: 'ShiftsTab' });
+            }
+          }}
         />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           {isEditing ? t(currentLanguage, 'shifts.editShiftTitle') : t(currentLanguage, 'shifts.createNew')}
@@ -228,7 +406,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
       <ScrollView style={styles.scrollView}>
         {/* Basic Info */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'common.basicInfo')}
@@ -247,41 +425,35 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             </HelperText>
 
             <View style={styles.row}>
-              <TextInput
+              <TimePickerField
                 label={t(currentLanguage, 'shifts.startTime')}
                 value={formData.startTime}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, startTime: text }))}
-                style={[styles.input, styles.halfInput]}
-                mode="outlined"
-                placeholder="HH:MM"
+                onPress={() => setShowStartTimePicker(true)}
+                style={styles.halfInput}
               />
-              <TextInput
+              <TimePickerField
                 label={t(currentLanguage, 'shifts.endTime')}
                 value={formData.endTime}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, endTime: text }))}
-                style={[styles.input, styles.halfInput]}
-                mode="outlined"
-                placeholder="HH:MM"
+                onPress={() => setShowEndTimePicker(true)}
+                style={styles.halfInput}
               />
             </View>
 
-            <TextInput
+            <TimePickerField
               label={t(currentLanguage, 'shifts.officeEndTime')}
               value={formData.officeEndTime}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, officeEndTime: text }))}
-              style={styles.input}
-              mode="outlined"
-              placeholder="HH:MM"
+              onPress={() => setShowOfficeEndTimePicker(true)}
             />
 
-            <TextInput
+            <TimePickerField
               label={t(currentLanguage, 'shifts.departureTime')}
               value={formData.departureTime}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, departureTime: text }))}
-              style={styles.input}
-              mode="outlined"
-              placeholder="HH:MM"
+              onPress={() => setShowDepartureTimePicker(true)}
+              error={!!errors.departureTime}
             />
+            <HelperText type="error" visible={!!errors.departureTime}>
+              {errors.departureTime}
+            </HelperText>
 
             <TextInput
               label={t(currentLanguage, 'shifts.breakMinutes')}
@@ -295,28 +467,69 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
             <HelperText type="error" visible={!!errors.breakMinutes}>
               {errors.breakMinutes}
             </HelperText>
+
+            <View style={styles.row}>
+              <TextInput
+                label={t(currentLanguage, 'shifts.remindBeforeStart')}
+                value={formData.remindBeforeStart.toString()}
+                onChangeText={(text) => {
+                  const value = parseInt(text) || 0;
+                  setFormData(prev => ({ ...prev, remindBeforeStart: value }));
+                  setErrors(prev => ({ ...prev, remindBeforeStart: '' }));
+                }}
+                style={[styles.input, styles.halfInput]}
+                mode="outlined"
+                keyboardType="numeric"
+                error={!!errors.remindBeforeStart}
+              />
+              <TextInput
+                label={t(currentLanguage, 'shifts.remindAfterEnd')}
+                value={formData.remindAfterEnd.toString()}
+                onChangeText={(text) => {
+                  const value = parseInt(text) || 0;
+                  setFormData(prev => ({ ...prev, remindAfterEnd: value }));
+                  setErrors(prev => ({ ...prev, remindAfterEnd: '' }));
+                }}
+                style={[styles.input, styles.halfInput]}
+                mode="outlined"
+                keyboardType="numeric"
+                error={!!errors.remindAfterEnd}
+              />
+            </View>
+            <HelperText type="error" visible={!!errors.remindBeforeStart}>
+              {errors.remindBeforeStart}
+            </HelperText>
+            <HelperText type="error" visible={!!errors.remindAfterEnd}>
+              {errors.remindAfterEnd}
+            </HelperText>
           </Card.Content>
         </Card>
 
-        {/* Work Days */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        {/* Days Applied */}
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              {t(currentLanguage, 'shifts.workDays')} *
+              {t(currentLanguage, 'shifts.daysApplied')} *
             </Text>
 
             <View style={styles.daysContainer}>
-              {dayNames.map((day, index) => (
-                <Chip
-                  key={index}
-                  mode={formData.workDays.includes(index) ? 'flat' : 'outlined'}
-                  selected={formData.workDays.includes(index)}
-                  onPress={() => handleWorkDayToggle(index)}
-                  style={styles.dayChip}
-                >
-                  {day}
-                </Chip>
-              ))}
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayString) => {
+                const dayLabels = currentLanguage === 'vi'
+                  ? { Mon: 'T2', Tue: 'T3', Wed: 'T4', Thu: 'T5', Fri: 'T6', Sat: 'T7', Sun: 'CN' }
+                  : { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat', Sun: 'Sun' };
+
+                return (
+                  <Chip
+                    key={dayString}
+                    mode={formData.daysApplied.includes(dayString) ? 'flat' : 'outlined'}
+                    selected={formData.daysApplied.includes(dayString)}
+                    onPress={() => handleDaysAppliedToggle(dayString)}
+                    style={styles.dayChip}
+                  >
+                    {dayLabels[dayString as keyof typeof dayLabels]}
+                  </Chip>
+                );
+              })}
             </View>
 
             <HelperText type="error" visible={!!errors.workDays}>
@@ -326,7 +539,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         </Card>
 
         {/* Options */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'shifts.options')}
@@ -368,7 +581,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
         {/* Status Messages */}
         {statusMessage.message && (
-          <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text style={[
                 styles.statusMessage,
@@ -402,7 +615,49 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
           </Button>
         </View>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Time Pickers */}
+      {showStartTimePicker && (
+        <DateTimePicker
+          value={timeStringToDate(formData.startTime)}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleStartTimeChange}
+        />
+      )}
+
+      {showEndTimePicker && (
+        <DateTimePicker
+          value={timeStringToDate(formData.endTime)}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleEndTimeChange}
+        />
+      )}
+
+      {showOfficeEndTimePicker && (
+        <DateTimePicker
+          value={timeStringToDate(formData.officeEndTime)}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleOfficeEndTimeChange}
+        />
+      )}
+
+      {showDepartureTimePicker && (
+        <DateTimePicker
+          value={timeStringToDate(formData.departureTime)}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDepartureTimeChange}
+        />
+      )}
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 
@@ -476,5 +731,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     paddingVertical: 8,
+  },
+  // Time picker field styles
+  timePickerField: {
+    borderWidth: 1,
+    borderRadius: 4,
+    marginBottom: 12,
+    minHeight: 56,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  timePickerLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  timePickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timePickerValue: {
+    fontSize: 16,
+    flex: 1,
+    marginLeft: 8,
+  },
+  timeIcon: {
+    marginRight: 8,
   },
 });

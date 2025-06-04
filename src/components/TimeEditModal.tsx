@@ -169,7 +169,7 @@ export function TimeEditModal({
       onDismiss={onDismiss}
       contentContainerStyle={[
         styles.container,
-        { backgroundColor: theme.colors.surface }
+        { backgroundColor: theme.colors.surfaceVariant }
       ]}
     >
       <View style={styles.header}>

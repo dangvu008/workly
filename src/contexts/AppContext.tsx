@@ -469,7 +469,11 @@ export function AppProvider({ children }: AppProviderProps) {
       dispatch({ type: 'SET_WEEKLY_STATUS', payload: weeklyStatus });
 
     } catch (error) {
-      console.error('Error handling button press:', error);
+      // Chỉ log error nếu không phải RapidPressDetectedException
+      if ((error as any)?.name !== 'RapidPressDetectedException') {
+        console.error('Error handling button press:', error);
+      }
+      // Luôn throw để UI component xử lý
       throw error;
     }
   };

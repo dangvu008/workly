@@ -278,7 +278,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
             visible={menuVisible === dateString}
             onDismiss={() => setMenuVisible(null)}
             anchor={<View />}
-            contentStyle={{ backgroundColor: theme.colors.surface }}
+            contentStyle={{ backgroundColor: theme.colors.surfaceVariant }}
           >
             <Menu.Item
               onPress={() => handleManualStatusUpdate(dateString, 'manual_present')}
@@ -313,7 +313,7 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <Text style={[styles.title, { color: theme.colors.onSurface }]}>
           {t(currentLanguage, 'statistics.thisWeek')} - {t(currentLanguage, 'statistics.status')}
         </Text>

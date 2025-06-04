@@ -70,7 +70,7 @@ export function WeatherWidget({ onPress }: WeatherWidgetProps) {
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-      <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      <Card style={[styles.container, { backgroundColor: theme.colors.surfaceVariant }]}>
         <LinearGradient
           colors={getGradientColors()}
           style={styles.gradient}

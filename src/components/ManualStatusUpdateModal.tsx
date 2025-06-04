@@ -456,7 +456,7 @@ export function ManualStatusUpdateModal({
         onDismiss={onDismiss}
         contentContainerStyle={[
           styles.modalContainer,
-          { backgroundColor: theme.colors.surface }
+          { backgroundColor: theme.colors.surfaceVariant }
         ]}
       >
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

@@ -10,6 +10,7 @@ import {
   Menu
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WorklyBackground } from '../components/WorklyBackground';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -154,8 +155,9 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
   const { label } = getDateRange();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+    <WorklyBackground variant="default">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
         <View style={{ width: 48 }} />
         <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>
           {t(currentLanguage, 'statistics.title')}
@@ -210,7 +212,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
 
         {/* Summary Cards */}
         <View style={styles.summaryGrid}>
-          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content style={styles.summaryContent}>
               <Text style={[styles.summaryNumber, { color: theme.colors.primary }]}>
                 {summary.totalDays}
@@ -221,7 +223,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
             </Card.Content>
           </Card>
 
-          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content style={styles.summaryContent}>
               <Text style={[styles.summaryNumber, { color: theme.colors.secondary }]}>
                 {summary.completedDays}
@@ -232,7 +234,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
             </Card.Content>
           </Card>
 
-          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content style={styles.summaryContent}>
               <Text style={[styles.summaryNumber, { color: theme.colors.tertiary }]}>
                 {formatHours(summary.totalHours)}
@@ -243,7 +245,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
             </Card.Content>
           </Card>
 
-          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surface }]}>
+          <Card style={[styles.summaryCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content style={styles.summaryContent}>
               <Text style={[styles.summaryNumber, { color: theme.colors.error }]}>
                 {summary.lateDays}
@@ -256,7 +258,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
         </View>
 
         {/* Hours Breakdown */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'statistics.dailyDetails')} - Phân loại giờ
@@ -303,7 +305,7 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
         </Card>
 
         {/* Detailed Table */}
-        <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t(currentLanguage, 'statistics.dailyDetails')}
@@ -364,7 +366,8 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
           {t(currentLanguage, 'statistics.exportReport')}
         </Button>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </WorklyBackground>
   );
 }
 

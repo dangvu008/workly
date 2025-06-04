@@ -41,11 +41,16 @@ export interface Shift {
   startTime: string; // HH:MM format
   endTime: string; // HH:MM format
   officeEndTime: string; // HH:MM format
-  breakMinutes: number;
-  showPunch: boolean;
   departureTime: string; // HH:MM format
+  daysApplied: string[]; // ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  remindBeforeStart: number; // Minutes before start time to remind
+  remindAfterEnd: number; // Minutes after end time to remind
+  showPunch: boolean;
+  breakMinutes: number;
   isNightShift: boolean;
-  workDays: number[]; // 0-6 (Sunday-Saturday)
+  workDays: number[]; // 0-6 (Sunday-Saturday) - kept for backward compatibility
+  createdAt: string; // ISO 8601 timestamp
+  updatedAt: string; // ISO 8601 timestamp
 }
 
 export interface AttendanceLog {

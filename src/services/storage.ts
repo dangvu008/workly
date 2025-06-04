@@ -309,6 +309,19 @@ class StorageService {
       throw error;
     }
   }
+
+  // Generic public methods for external services (như AlarmService)
+  async saveData<T>(key: string, value: T): Promise<void> {
+    return this.setItem(key, value);
+  }
+
+  async getData<T>(key: string, defaultValue?: T): Promise<T> {
+    return this.getItem(key, defaultValue as T);
+  }
+
+  async removeData(key: string): Promise<void> {
+    return this.removeItem(key);
+  }
 }
 
 export const storageService = new StorageService();

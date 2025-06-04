@@ -11,6 +11,8 @@ import { WeatherWidget } from '../components/WeatherWidget';
 import { AttendanceHistory } from '../components/AttendanceHistory';
 import { t } from '../i18n';
 import { NotificationStatusBanner } from '../components/NotificationStatusBanner';
+import { AlarmStatusBanner } from '../components/AlarmStatusBanner';
+import ExpoGoBanner from '../components/ExpoGoBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
@@ -376,9 +378,19 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </AnimatedCard>
 
+        {/* Expo Go Banner - Hiển thị khi chạy trong Expo Go */}
+        <AnimatedCard animationType="slideUp" delay={25}>
+          <ExpoGoBanner />
+        </AnimatedCard>
+
         {/* Notification Status Banner - Hiển thị khi có vấn đề với notifications */}
         <AnimatedCard animationType="slideUp" delay={50}>
           <NotificationStatusBanner />
+        </AnimatedCard>
+
+        {/* Alarm Status Banner - Hiển thị trạng thái hệ thống báo thức */}
+        <AnimatedCard animationType="slideUp" delay={60}>
+          <AlarmStatusBanner />
         </AnimatedCard>
 
         {/* Weather Widget với animation */}
@@ -423,20 +435,20 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 
         {/* Attendance History - Show below Multi-Function Button */}
         {state.activeShift && (
-          <AnimatedCard animationType="slideUp" delay={400}>
-            <MemoizedAttendanceHistory />
+          <AnimatedCard animationType="slideUp" delay={400} style={styles.attendanceHistoryCard}>
+            <Card.Content>
+              <MemoizedAttendanceHistory />
+            </Card.Content>
           </AnimatedCard>
         )}
 
-
-
-
-
         {/* Weekly Status Grid với animation */}
         <AnimatedCard animationType="slideUp" delay={500} elevated>
-          <MemoizedWeeklyStatusGrid onDayPress={() => {
-            // Day press handled by WeeklyStatusGrid internally
-          }} />
+          <Card.Content>
+            <MemoizedWeeklyStatusGrid onDayPress={() => {
+              // Day press handled by WeeklyStatusGrid internally
+            }} />
+          </Card.Content>
         </AnimatedCard>
 
         {/* Notes Section với animation */}
@@ -645,5 +657,10 @@ const styles = StyleSheet.create({
   },
   addNoteButton: {
     marginTop: SPACING.sm,
+  },
+  attendanceHistoryCard: {
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.sm,
+    zIndex: 1, // Ensure it's above other elements
   },
 });

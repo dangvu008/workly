@@ -1,4 +1,4 @@
-import { format, parseISO, addHours, subHours, isBefore, isAfter, isWithinInterval, addDays, startOfDay } from 'date-fns';
+import { format, parseISO, addHours, subHours, subMinutes, isBefore, isAfter, isWithinInterval, addDays, startOfDay } from 'date-fns';
 import { Shift, ButtonState, AttendanceLog } from '../types';
 import { storageService } from './storage';
 
@@ -305,6 +305,61 @@ class TimeSyncService {
     } else {
       return isWithinInterval(now, { start: notificationStart, end: notificationEnd });
     }
+  }
+
+  /**
+   * Tính toán thời gian nhắc nhở cho note dựa trên shift (5 phút trước departure time)
+   * @param shift - Ca làm việc
+   * @param targetDate - Ngày cụ thể (optional, mặc định là ngày hôm nay)
+   * @returns Array các thời gian nhắc nhở cho 7 ngày tới
+   */
+  calculateShiftBasedReminderTimes(shift: Shift, targetDate?: Date): Date[] {
+    const reminderTimes: Date[] = [];
+    const baseDate = targetDate || new Date();
+    const today = startOfDay(baseDate);
+
+    // Tính toán cho 7 ngày tới
+    for (let i = 0; i < 7; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() + i);
+      const dayOfWeek = checkDate.getDay();
+
+      // Kiểm tra shift có làm việc ngày này không
+      if (!shift.workDays.includes(dayOfWeek)) {
+        continue;
+      }
+
+      // Sử dụng logic đồng nhất với buildScheduledTimestamps
+      const timestamps = this.buildScheduledTimestamps(shift, checkDate);
+
+      // Tính thời gian departure (5 phút trước departure time)
+      const departureTime = this.parseTimeForDate(shift.departureTime, checkDate);
+
+      // Xử lý ca đêm: nếu departure time >= 20:00, thì nó thuộc ngày trước
+      if (timestamps.isOvernightShift && departureTime.getHours() >= 20) {
+        departureTime.setDate(departureTime.getDate() - 1);
+      }
+
+      // Nhắc nhở 5 phút trước departure time
+      const reminderTime = subMinutes(departureTime, 5);
+
+      // Chỉ thêm nếu thời gian trong tương lai
+      if (isAfter(reminderTime, baseDate)) {
+        reminderTimes.push(reminderTime);
+      }
+    }
+
+    return reminderTimes.sort((a, b) => a.getTime() - b.getTime());
+  }
+
+  /**
+   * Lấy thời gian nhắc nhở tiếp theo cho note dựa trên shift
+   * @param shift - Ca làm việc
+   * @returns Thời gian nhắc nhở tiếp theo hoặc null nếu không có
+   */
+  getNextShiftBasedReminderTime(shift: Shift): Date | null {
+    const reminderTimes = this.calculateShiftBasedReminderTimes(shift);
+    return reminderTimes.length > 0 ? reminderTimes[0] : null;
   }
 
   // Get display info for current time and shift - Nút luôn hiển thị

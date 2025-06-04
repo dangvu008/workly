@@ -83,71 +83,71 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
   }
 
   return (
-    <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
-      <Card.Content>
-        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-          {t(currentLanguage, 'attendanceHistory.title')}
-        </Text>
-        
-        <ScrollView 
-          style={styles.logsList}
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
-        >
-          {todayLogs.map((log, index) => (
-            <View key={`${log.type}-${log.time}-${index}`}>
-              <View style={styles.logItem}>
-                <View style={styles.logIcon}>
-                  <MaterialCommunityIcons
-                    name={getActionIcon(log.type) as any}
-                    size={20}
-                    color={getActionColor(log.type)}
-                  />
-                </View>
-                
-                <View style={styles.logContent}>
-                  <Text style={[
-                    styles.actionText,
-                    { color: theme.colors.onSurface }
-                  ]}>
-                    {getActionText(log.type)}
-                  </Text>
-                  <Text style={[
-                    styles.timeText,
-                    { color: theme.colors.onSurfaceVariant }
-                  ]}>
-                    {formatTime(log.time)}
-                  </Text>
-                </View>
-                
-                <View style={styles.statusIndicator}>
-                  <View style={[
-                    styles.statusDot,
-                    { backgroundColor: getActionColor(log.type) }
-                  ]} />
-                </View>
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+        {t(currentLanguage, 'attendanceHistory.title')}
+      </Text>
+
+      <ScrollView
+        style={styles.logsList}
+        contentContainerStyle={styles.logsContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        bounces={false}
+      >
+        {todayLogs.map((log, index) => (
+          <View key={`${log.type}-${log.time}-${index}`}>
+            <View style={styles.logItem}>
+              <View style={styles.logIcon}>
+                <MaterialCommunityIcons
+                  name={getActionIcon(log.type) as any}
+                  size={20}
+                  color={getActionColor(log.type)}
+                />
               </View>
-              
-              {index < todayLogs.length - 1 && (
-                <Divider style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
-              )}
+
+              <View style={styles.logContent}>
+                <Text style={[
+                  styles.actionText,
+                  { color: theme.colors.onSurface }
+                ]}>
+                  {getActionText(log.type)}
+                </Text>
+                <Text style={[
+                  styles.timeText,
+                  { color: theme.colors.onSurfaceVariant }
+                ]}>
+                  {formatTime(log.time)}
+                </Text>
+              </View>
+
+              <View style={styles.statusIndicator}>
+                <View style={[
+                  styles.statusDot,
+                  { backgroundColor: getActionColor(log.type) }
+                ]} />
+              </View>
             </View>
-          ))}
-        </ScrollView>
-        
-        <Text style={[styles.summary, { color: theme.colors.onSurfaceVariant }]}>
-          {t(currentLanguage, 'attendanceHistory.totalActions').replace('{count}', todayLogs.length.toString())}
-        </Text>
-      </Card.Content>
-    </Card>
+
+            {index < todayLogs.length - 1 && (
+              <Divider style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
+            )}
+          </View>
+        ))}
+      </ScrollView>
+
+      <Text style={[styles.summary, { color: theme.colors.onSurfaceVariant }]}>
+        {t(currentLanguage, 'attendanceHistory.totalActions').replace('{count}', todayLogs.length.toString())}
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    padding: 16, // Add padding since we removed Card.Content
     borderRadius: 12,
-    elevation: 2,
+    overflow: 'hidden', // Ensure content doesn't overflow
   },
   title: {
     fontSize: 16,
@@ -156,7 +156,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   logsList: {
-    maxHeight: 200, // Limit height to prevent taking too much space
+    maxHeight: 180, // Slightly reduced height to prevent overlap
+    minHeight: 60, // Minimum height for better layout
+  },
+  logsContent: {
+    flexGrow: 1,
+    paddingBottom: 4, // Small padding at bottom
   },
   logItem: {
     flexDirection: 'row',
@@ -203,6 +208,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 8,
+    marginBottom: 4, // Add bottom margin
     fontStyle: 'italic',
+    paddingHorizontal: 8, // Add horizontal padding
   },
 });

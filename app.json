@@ -38,7 +38,9 @@
         "WAKE_LOCK",
         "POST_NOTIFICATIONS",
         "USE_EXACT_ALARM",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -62,6 +64,11 @@
       "iosDisplayInForeground": true,
       "androidMode": "default",
       "androidCollapsedTitle": "Workly"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ef4e0d06-9b1f-4d5c-b680-23a75a2aad60"
+      }
     }
   }
 }

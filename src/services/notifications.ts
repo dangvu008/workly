@@ -24,6 +24,16 @@ const isRunningInExpoGo = () => {
   }
 };
 
+// Check if notifications are available (considering SDK 53+ limitations)
+const isNotificationsFullySupported = () => {
+  // Trong Expo Go SDK 53+, push notifications không được hỗ trợ
+  if (isRunningInExpoGo()) {
+    console.log('📱 Workly: Đang chạy trong Expo Go - Push notifications bị hạn chế');
+    return false;
+  }
+  return Notifications !== null;
+};
+
 // Check if notifications are available
 const isNotificationsAvailable = () => {
   return Notifications !== null && typeof Notifications.setNotificationHandler === 'function';
@@ -63,18 +73,20 @@ class NotificationService {
     if (this.isInitialized) return;
 
     try {
-      // Kiểm tra xem notifications có khả dụng không
-      if (!isNotificationsAvailable()) {
+      // Kiểm tra xem notifications có đầy đủ hỗ trợ không (bao gồm cả Expo Go limitations)
+      if (!isNotificationsFullySupported()) {
         this.isAvailable = false;
         this.status = {
           isSupported: false,
           isExpoGo: isRunningInExpoGo(),
           hasPermission: false,
           platform: Platform.OS,
-          message: 'expo-notifications không khả dụng trong môi trường này. Sử dụng development build để có đầy đủ tính năng.',
+          message: isRunningInExpoGo()
+            ? 'Push notifications không khả dụng trong Expo Go (SDK 53+). Sử dụng development build để có đầy đủ tính năng.'
+            : 'expo-notifications không khả dụng trong môi trường này.',
           canSchedule: false
         };
-        console.warn('⚠️ Workly: Notifications không khả dụng - expo-notifications module không tìm thấy');
+        console.warn('⚠️ Workly: Notifications không đầy đủ hỗ trợ - sử dụng AlarmService thay thế');
         this.isInitialized = true;
         return;
       }
@@ -201,6 +213,79 @@ class NotificationService {
   // Kiểm tra xem có thể lập lịch notifications không
   canScheduleNotifications(): boolean {
     return this.isAvailable && this.status?.canSchedule === true;
+  }
+
+  // Lấy thông tin chi tiết về trạng thái notifications
+  async getDetailedStatus(): Promise<{
+    status: NotificationStatus;
+    scheduledCount: number;
+    environment: string;
+    recommendations: string[];
+  }> {
+    await this.initialize();
+
+    let scheduledCount = 0;
+    try {
+      if (this.canScheduleNotifications()) {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        scheduledCount = scheduled.length;
+      }
+    } catch (error) {
+      console.warn('Could not get scheduled notifications count:', error);
+    }
+
+    const environment = this.status?.isExpoGo ? 'Expo Go' : 'Development/Production Build';
+
+    const recommendations: string[] = [];
+    if (this.status?.isExpoGo) {
+      recommendations.push('Sử dụng development build để có đầy đủ tính năng notifications');
+      recommendations.push('Chạy lệnh: eas build --profile development --platform android');
+    } else if (!this.status?.hasPermission) {
+      recommendations.push('Cấp quyền notifications trong Settings của thiết bị');
+      recommendations.push('Khởi động lại app sau khi cấp quyền');
+    }
+
+    return {
+      status: this.status || {
+        isSupported: false,
+        isExpoGo: false,
+        hasPermission: false,
+        platform: Platform.OS,
+        message: 'Chưa khởi tạo',
+        canSchedule: false
+      },
+      scheduledCount,
+      environment,
+      recommendations
+    };
+  }
+
+  // Test notification để kiểm tra hoạt động
+  async testNotification(): Promise<void> {
+    try {
+      await this.initialize();
+
+      if (!this.canScheduleNotifications()) {
+        this.showFallbackAlert(
+          'Test Notification',
+          'Không thể gửi test notification trong môi trường hiện tại.'
+        );
+        return;
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: `test_${Date.now()}`,
+        content: {
+          title: '🧪 Test Notification',
+          body: 'Notifications đang hoạt động bình thường!',
+          data: { type: 'test' },
+        },
+        trigger: null, // Show immediately
+      });
+    } catch (error) {
+      console.error('Test notification failed:', error);
+      throw error;
+    }
   }
 
   // Hiển thị thông báo fallback khi notifications không khả dụng
@@ -398,39 +483,103 @@ class NotificationService {
         return;
       }
 
-      if (!note.reminderDateTime) return;
+      // Cancel existing reminders for this note
+      await this.cancelNoteReminder(note.id);
 
-      const reminderTime = new Date(note.reminderDateTime);
-      const now = new Date();
+      // Handle specific datetime reminders
+      if (note.reminderDateTime) {
+        const reminderTime = new Date(note.reminderDateTime);
+        const now = new Date();
 
-      if (reminderTime <= now) return;
+        if (reminderTime <= now) return;
 
-      await Notifications.scheduleNotificationAsync({
-        identifier: `note_${note.id}`,
-        content: {
-          title: `📝 ${note.title}`,
-          body: note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content,
-          categoryIdentifier: NOTIFICATION_CATEGORIES.NOTE_REMINDER,
-          data: {
-            type: 'note',
-            noteId: note.id,
-            noteTitle: note.title,
+        await Notifications.scheduleNotificationAsync({
+          identifier: `note_${note.id}`,
+          content: {
+            title: `📝 ${note.title}`,
+            body: note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content,
+            categoryIdentifier: NOTIFICATION_CATEGORIES.NOTE_REMINDER,
+            data: {
+              type: 'note',
+              noteId: note.id,
+              noteTitle: note.title,
+            },
           },
-        },
-        trigger: {
-          date: reminderTime,
-        },
-      });
+          trigger: {
+            date: reminderTime,
+          },
+        });
+        return;
+      }
+
+      // Handle shift-based reminders
+      if (note.associatedShiftIds && note.associatedShiftIds.length > 0) {
+        await this.scheduleShiftBasedNoteReminders(note);
+      }
     } catch (error) {
       console.error('Error scheduling note reminder:', error);
       throw error;
     }
   }
 
+  /**
+   * Lập lịch nhắc nhở cho note dựa trên shift (5 phút trước departure time)
+   */
+  private async scheduleShiftBasedNoteReminders(note: Note): Promise<void> {
+    if (!note.associatedShiftIds || note.associatedShiftIds.length === 0) return;
+
+    const { timeSyncService } = await import('./timeSync');
+    const shifts = await storageService.getShifts();
+
+    for (const shiftId of note.associatedShiftIds) {
+      const shift = shifts.find(s => s.id === shiftId);
+      if (!shift) continue;
+
+      // Tính toán thời gian nhắc nhở cho 7 ngày tới
+      const reminderTimes = timeSyncService.calculateShiftBasedReminderTimes(shift);
+
+      // Lập lịch cho từng thời gian
+      for (let i = 0; i < reminderTimes.length; i++) {
+        const reminderTime = reminderTimes[i];
+
+        await Notifications.scheduleNotificationAsync({
+          identifier: `note_shift_${note.id}_${shiftId}_${i}`,
+          content: {
+            title: `📝 ${note.title}`,
+            body: `${note.content.length > 80 ? note.content.substring(0, 80) + '...' : note.content} (Ca: ${shift.name})`,
+            categoryIdentifier: NOTIFICATION_CATEGORIES.NOTE_REMINDER,
+            data: {
+              type: 'note_shift',
+              noteId: note.id,
+              noteTitle: note.title,
+              shiftId: shift.id,
+              shiftName: shift.name,
+            },
+          },
+          trigger: {
+            date: reminderTime,
+          },
+        });
+      }
+    }
+  }
+
   async cancelNoteReminder(noteId: string): Promise<void> {
     try {
       if (!this.canScheduleNotifications()) return;
+
+      // Cancel specific datetime reminder
       await Notifications.cancelScheduledNotificationAsync(`note_${noteId}`);
+
+      // Cancel all shift-based reminders for this note
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const noteShiftReminders = scheduledNotifications.filter(
+        notification => notification.identifier.startsWith(`note_shift_${noteId}_`)
+      );
+
+      for (const notification of noteShiftReminders) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+      }
     } catch (error) {
       console.error('Error canceling note reminder:', error);
     }
@@ -495,19 +644,69 @@ class NotificationService {
     try {
       await this.initialize();
 
+      const now = new Date();
+      const timeDiff = reminderDate.getTime() - now.getTime();
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+
+      console.log(`📅 NotificationService: Scheduling weekly reminder for ${reminderDate.toISOString()}`);
+      console.log(`📅 NotificationService: Current time: ${now.toISOString()}`);
+      console.log(`📅 NotificationService: Time difference: ${daysDiff.toFixed(2)} days`);
+      console.log(`📅 NotificationService: Can schedule notifications: ${this.canScheduleNotifications()}`);
+      console.log(`📅 NotificationService: Is Expo Go: ${this.status?.isExpoGo}`);
+
+      // Kiểm tra thời gian hợp lý - không lập lịch nếu quá gần hoặc quá xa
+      if (daysDiff < 0.1 || daysDiff > 7) {
+        console.log(`📅 NotificationService: Invalid reminder time (${daysDiff.toFixed(2)} days), skipping`);
+        return;
+      }
+
       if (!this.canScheduleNotifications()) {
         console.log('📱 Workly: Notifications không khả dụng, bỏ qua nhắc nhở hàng tuần');
+        // Trong Expo Go, KHÔNG BAO GIỜ hiển thị fallback alert cho weekly reminder
+        // vì nó chỉ nên hiển thị đúng thời điểm (Saturday 10 PM) thông qua scheduled notification
+        // hoặc alarm service, không phải khi lập lịch
+        if (this.status?.isExpoGo) {
+          console.log('📱 NotificationService: Expo Go detected - weekly reminder fallback alert disabled to prevent inappropriate timing');
+        }
         return;
+      }
+
+      // Kiểm tra xem đã có weekly reminder được lập lịch chưa
+      const existingNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const existingWeeklyReminders = existingNotifications.filter(
+        notification => notification.identifier.startsWith('weekly_reminder_')
+      );
+
+      if (existingWeeklyReminders.length > 0) {
+        console.log(`📅 NotificationService: Found ${existingWeeklyReminders.length} existing weekly reminders, checking if update needed`);
+
+        // Kiểm tra xem có reminder nào gần với thời gian mong muốn không (trong vòng 1 giờ)
+        const hasNearbyReminder = existingWeeklyReminders.some(notification => {
+          if (notification.trigger && 'date' in notification.trigger && notification.trigger.date) {
+            const existingDate = new Date(notification.trigger.date);
+            const timeDiff = Math.abs(existingDate.getTime() - reminderDate.getTime());
+            return timeDiff < 60 * 60 * 1000; // 1 hour
+          }
+          return false;
+        });
+
+        if (hasNearbyReminder) {
+          console.log('📅 NotificationService: Similar weekly reminder already exists, skipping');
+          return;
+        }
       }
 
       // Cancel existing weekly reminders
       await this.cancelWeeklyReminders();
 
+      const identifier = `weekly_reminder_${Date.now()}`;
+      console.log(`📅 NotificationService: Creating notification with identifier: ${identifier}`);
+
       await Notifications.scheduleNotificationAsync({
-        identifier: `weekly_reminder_${Date.now()}`,
+        identifier,
         content: {
           title: '📅 Kết thúc tuần làm việc',
-          body: 'Đã kết thúc tuần làm việc. Bạn có muốn kiểm tra và thay đổi ca cho tuần tới không?',
+          body: 'Tuần làm việc đã kết thúc. Bạn có muốn xem lại và chuẩn bị ca làm việc cho tuần tới không?',
           categoryIdentifier: NOTIFICATION_CATEGORIES.SHIFT_REMINDER,
           data: {
             type: 'weekly_reminder',
@@ -518,8 +717,10 @@ class NotificationService {
           date: reminderDate,
         },
       });
+
+      console.log(`✅ NotificationService: Weekly reminder scheduled successfully`);
     } catch (error) {
-      console.error('Error scheduling weekly shift reminder:', error);
+      console.error('❌ NotificationService: Error scheduling weekly shift reminder:', error);
     }
   }
 

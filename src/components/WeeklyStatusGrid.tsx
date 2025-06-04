@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Text, Card, useTheme, Menu } from 'react-native-paper';
+import { Text, useTheme, Menu } from 'react-native-paper';
 import { format, addDays, startOfWeek, isFuture, isToday, isPast } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
@@ -120,8 +120,19 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
       await actions.refreshWeeklyStatus();
 
-      // Show success message
-      const statusText = WEEKLY_STATUS[status]?.text || status;
+      // Show success message - Lấy text theo ngôn ngữ hiện tại
+      const statusConfig = WEEKLY_STATUS[status];
+      let statusText: string = status; // Fallback với type rõ ràng
+
+      if (statusConfig?.text) {
+        if (typeof statusConfig.text === 'string') {
+          statusText = statusConfig.text;
+        } else {
+          // text là object với vi/en keys
+          statusText = statusConfig.text[currentLanguage as 'vi' | 'en'] || statusConfig.text.vi || status;
+        }
+      }
+
       const dateType = selectedDate === format(new Date(), 'yyyy-MM-dd') ? 'hôm nay' :
                       `ngày ${format(new Date(selectedDate), 'dd/MM')}`;
       Alert.alert('✅ Thành công', `Đã cập nhật trạng thái ${dateType} thành "${statusText}"`);
@@ -302,17 +313,15 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   return (
     <>
-      <Card style={[styles.container, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-            {t(currentLanguage, 'statistics.thisWeek')} - {t(currentLanguage, 'statistics.status')}
-          </Text>
+      <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+          {t(currentLanguage, 'statistics.thisWeek')} - {t(currentLanguage, 'statistics.status')}
+        </Text>
 
-          <View style={styles.grid}>
-            {weekDays.map((date, index) => renderDayItem(date, index))}
-          </View>
-        </Card.Content>
-      </Card>
+        <View style={styles.grid}>
+          {weekDays.map((date, index) => renderDayItem(date, index))}
+        </View>
+      </View>
 
       {/* Manual Status Update Modal - chỉ hiển thị khi có selectedDate hợp lệ và modal visible */}
       {selectedDate && manualUpdateModalVisible && (
@@ -338,9 +347,8 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    padding: 16, // Add padding since we removed Card.Content
     borderRadius: 12,
-    elevation: 2,
   },
   title: {
     fontSize: 16,

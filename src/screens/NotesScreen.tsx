@@ -218,7 +218,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       <View style={styles.controlsRow}>
         <View style={styles.controlItem}>
           <Text style={[styles.controlLabel, { color: theme.colors.onSurface }]}>
-            {t(currentLanguage, 'common.info')}:
+            {currentLanguage === 'vi' ? 'Hiển thị:' : 'Display:'}
           </Text>
           <Menu
             visible={displayCountMenuVisible}
@@ -226,9 +226,11 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
             anchor={
               <Button
                 mode="outlined"
-                compact
+                compact={false}
                 onPress={() => setDisplayCountMenuVisible(true)}
                 style={styles.controlButton}
+                contentStyle={styles.buttonContent}
+                labelStyle={styles.buttonLabel}
               >
                 {state.settings?.notesDisplayCount || 3} ▼
               </Button>
@@ -239,35 +241,35 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 actions.updateSettings({ notesDisplayCount: 2 });
                 setDisplayCountMenuVisible(false);
               }}
-              title="2 ghi chú"
+              title={`2 ${t(currentLanguage, 'notes.title').toLowerCase()}`}
             />
             <Menu.Item
               onPress={() => {
                 actions.updateSettings({ notesDisplayCount: 3 });
                 setDisplayCountMenuVisible(false);
               }}
-              title="3 ghi chú"
+              title={`3 ${t(currentLanguage, 'notes.title').toLowerCase()}`}
             />
             <Menu.Item
               onPress={() => {
                 actions.updateSettings({ notesDisplayCount: 4 });
                 setDisplayCountMenuVisible(false);
               }}
-              title="4 ghi chú"
+              title={`4 ${t(currentLanguage, 'notes.title').toLowerCase()}`}
             />
             <Menu.Item
               onPress={() => {
                 actions.updateSettings({ notesDisplayCount: 5 });
                 setDisplayCountMenuVisible(false);
               }}
-              title="5 ghi chú"
+              title={`5 ${t(currentLanguage, 'notes.title').toLowerCase()}`}
             />
           </Menu>
         </View>
 
         <View style={styles.controlItem}>
           <Text style={[styles.controlLabel, { color: theme.colors.onSurface }]}>
-            {t(currentLanguage, 'common.info')}:
+            {currentLanguage === 'vi' ? 'Sắp xếp:' : 'Sort:'}
           </Text>
           <Menu
             visible={sortMenuVisible}
@@ -275,11 +277,17 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
             anchor={
               <Button
                 mode="outlined"
-                compact
+                compact={false}
                 onPress={() => setSortMenuVisible(true)}
                 style={styles.controlButton}
+                contentStyle={styles.buttonContent}
+                labelStyle={styles.buttonLabel}
               >
-                {sortBy === 'priority' ? 'Ưu tiên' : sortBy === 'date' ? 'Ngày tạo' : 'ABC'} ▼
+                {sortBy === 'priority'
+                  ? (currentLanguage === 'vi' ? 'Ưu tiên' : 'Priority')
+                  : sortBy === 'date'
+                    ? (currentLanguage === 'vi' ? 'Ngày tạo' : 'Date')
+                    : 'ABC'} ▼
               </Button>
             }
           >
@@ -288,14 +296,14 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 setSortBy('priority');
                 setSortMenuVisible(false);
               }}
-              title="Ưu tiên"
+              title={currentLanguage === 'vi' ? 'Ưu tiên' : 'Priority'}
             />
             <Menu.Item
               onPress={() => {
                 setSortBy('date');
                 setSortMenuVisible(false);
               }}
-              title="Ngày tạo"
+              title={currentLanguage === 'vi' ? 'Ngày tạo' : 'Date'}
             />
             <Menu.Item
               onPress={() => {
@@ -311,7 +319,10 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Searchbar
-          placeholder={`${t(currentLanguage, 'common.info')} ${t(currentLanguage, 'notes.title').toLowerCase()}...`}
+          placeholder={currentLanguage === 'vi'
+            ? `Tìm kiếm ${t(currentLanguage, 'notes.title').toLowerCase()}...`
+            : `Search ${t(currentLanguage, 'notes.title').toLowerCase()}...`
+          }
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}
@@ -329,27 +340,33 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
               {searchQuery.trim() ? (
                 <>
                   <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                    Không tìm thấy ghi chú nào với từ khóa "{searchQuery}"
+                    {currentLanguage === 'vi'
+                      ? `Không tìm thấy ghi chú nào với từ khóa "${searchQuery}"`
+                      : `No notes found with keyword "${searchQuery}"`
+                    }
                   </Text>
                   <Button
                     mode="outlined"
                     onPress={() => setSearchQuery('')}
                     style={styles.createFirstButton}
                   >
-                    Xóa tìm kiếm
+                    {currentLanguage === 'vi' ? 'Xóa tìm kiếm' : 'Clear search'}
                   </Button>
                 </>
               ) : (
                 <>
                   <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                    Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên!
+                    {currentLanguage === 'vi'
+                      ? 'Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên!'
+                      : 'No notes yet. Create your first note!'
+                    }
                   </Text>
                   <Button
                     mode="contained"
                     onPress={() => navigation.navigate('NoteDetail', {})}
                     style={styles.createFirstButton}
                   >
-                    Tạo ghi chú đầu tiên
+                    {currentLanguage === 'vi' ? 'Tạo ghi chú đầu tiên' : 'Create first note'}
                   </Button>
                 </>
               )}
@@ -391,23 +408,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12, // Reduced padding to give more space
+    paddingVertical: 10, // Slightly increased vertical padding
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   controlItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6, // Reduced gap to save space
+    flex: 1, // Allow items to take available space
+    marginHorizontal: 2, // Reduced margin between items
   },
   controlLabel: {
     fontSize: 14,
     fontWeight: '500',
+    flexShrink: 0, // Don't shrink labels
   },
   controlButton: {
-    minWidth: 80,
-    height: 32,
+    flex: 1, // Take remaining space
+    minWidth: 100, // Increased minimum width
+    height: 36, // Increased height for better touch target
+    maxWidth: 140, // Prevent buttons from getting too wide
+  },
+  buttonContent: {
+    height: 36, // Match button height
+    paddingHorizontal: 8, // Reduce horizontal padding
+  },
+  buttonLabel: {
+    fontSize: 12, // Slightly smaller font to fit better
+    marginHorizontal: 0, // Remove default margin
   },
   searchContainer: {
     paddingHorizontal: 16,

@@ -473,6 +473,32 @@ export function NoteDetailScreen({ navigation, route }: NoteDetailScreenProps) {
                     Nhắc nhở sẽ được đặt trước 5 phút giờ xuất phát (departureTime) của (các) ca đã chọn.
                   </Text>
 
+                  {/* Hiển thị thông tin thời gian nhắc nhở tiếp theo */}
+                  {formData.associatedShiftIds.length > 0 && (
+                    <View style={[styles.reminderInfoContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
+                      <Text style={[styles.reminderInfoTitle, { color: theme.colors.onSurfaceVariant }]}>
+                        📅 Thời gian nhắc nhở tiếp theo:
+                      </Text>
+                      {formData.associatedShiftIds.map(shiftId => {
+                        const shift = state.shifts.find(s => s.id === shiftId);
+                        if (!shift) return null;
+
+                        // Tính toán thời gian nhắc nhở tiếp theo cho shift này
+                        const { timeSyncService } = require('../services/timeSync');
+                        const nextReminderTime = timeSyncService.getNextShiftBasedReminderTime(shift);
+
+                        return (
+                          <Text key={shiftId} style={[styles.reminderInfoText, { color: theme.colors.onSurfaceVariant }]}>
+                            • {shift.name}: {nextReminderTime
+                              ? format(nextReminderTime, 'dd/MM/yyyy HH:mm', { locale: currentLanguage === 'vi' ? vi : enUS })
+                              : 'Không có lịch nhắc nhở trong 7 ngày tới'
+                            }
+                          </Text>
+                        );
+                      })}
+                    </View>
+                  )}
+
                   {state.shifts.length > 0 ? (
                     <View style={styles.shiftsContainer}>
                       {state.shifts.map((shift) => (
@@ -743,5 +769,21 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     flex: 1,
+  },
+  reminderInfoContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 8,
+  },
+  reminderInfoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  reminderInfoText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 4,
   },
 });

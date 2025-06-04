@@ -11,6 +11,7 @@ import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
 import { weatherService } from '../services/weather';
 import { notificationService } from '../services/notifications';
+import { alarmService } from '../services/alarmService';
 import { format, addDays, startOfWeek } from 'date-fns';
 
 // State interface
@@ -192,8 +193,9 @@ export function AppProvider({ children }: AppProviderProps) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // Initialize notification service
+      // Initialize notification service and alarm service
       await notificationService.initialize();
+      await alarmService.initialize();
 
       // Load all data
       const [settings, shifts, activeShiftId] = await Promise.all([
@@ -240,7 +242,12 @@ export function AppProvider({ children }: AppProviderProps) {
 
       // Check for shift rotation and schedule reminders
       await workManager.checkAndRotateShifts();
-      await workManager.scheduleWeeklyReminder();
+
+      // Chỉ lập lịch weekly reminder nếu có active shift
+      // Tránh hiển thị thông báo fallback ngay khi khởi động app
+      if (activeShiftId) {
+        await workManager.scheduleWeeklyReminder();
+      }
 
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -292,12 +299,14 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       }
 
-      // Schedule new shift reminders
+      // Schedule new shift reminders (both notifications and alarms)
       if (activeShift) {
         await notificationService.scheduleShiftReminders(activeShift);
+        await alarmService.scheduleShiftReminder(activeShift);
         await workManager.scheduleWeeklyReminder();
       } else {
         await notificationService.cancelShiftReminders();
+        await alarmService.cancelShiftReminders();
         await notificationService.cancelWeeklyReminders();
       }
 
@@ -365,9 +374,11 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.addNote(note);
       dispatch({ type: 'ADD_NOTE', payload: note });
 
-      // Schedule reminder if set
-      if (note.reminderDateTime) {
+      // Schedule reminder if set (both notifications and alarms)
+      // Hỗ trợ cả specific datetime và shift-based reminders
+      if (note.reminderDateTime || (note.associatedShiftIds && note.associatedShiftIds.length > 0)) {
         await notificationService.scheduleNoteReminder(note);
+        await alarmService.scheduleNoteReminder(note);
       }
     } catch (error) {
       console.error('Error adding note:', error);
@@ -381,11 +392,18 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.updateNote(noteId, updates);
       dispatch({ type: 'UPDATE_NOTE', payload: { id: noteId, updates } });
 
-      // Update reminder
+      // Update reminder (both notifications and alarms)
       await notificationService.cancelNoteReminder(noteId);
+      await alarmService.cancelNoteReminder(noteId);
+
       const updatedNote = state.notes.find(n => n.id === noteId);
-      if (updatedNote && updates.reminderDateTime) {
-        await notificationService.scheduleNoteReminder({ ...updatedNote, ...updates } as Note);
+      if (updatedNote) {
+        const newNote = { ...updatedNote, ...updates } as Note;
+        // Hỗ trợ cả specific datetime và shift-based reminders
+        if (newNote.reminderDateTime || (newNote.associatedShiftIds && newNote.associatedShiftIds.length > 0)) {
+          await notificationService.scheduleNoteReminder(newNote);
+          await alarmService.scheduleNoteReminder(newNote);
+        }
       }
     } catch (error) {
       console.error('Error updating note:', error);
@@ -399,8 +417,9 @@ export function AppProvider({ children }: AppProviderProps) {
       await storageService.deleteNote(noteId);
       dispatch({ type: 'DELETE_NOTE', payload: noteId });
 
-      // Cancel reminder
+      // Cancel reminder (both notifications and alarms)
       await notificationService.cancelNoteReminder(noteId);
+      await alarmService.cancelNoteReminder(noteId);
     } catch (error) {
       console.error('Error deleting note:', error);
       throw error;
@@ -454,35 +473,54 @@ export function AppProvider({ children }: AppProviderProps) {
   // Handle rapid press confirmation - tính đủ công theo lịch trình
   const handleRapidPressConfirmed = async (checkInTime: string, checkOutTime: string) => {
     try {
+      console.log('🚀 AppContext: handleRapidPressConfirmed started', { checkInTime, checkOutTime });
+
       const today = format(new Date(), 'yyyy-MM-dd');
       const logs = await storageService.getAttendanceLogsForDate(today);
 
+      console.log('🚀 AppContext: Retrieved logs for today:', logs.length);
+
       if (!state.activeShift) {
+        console.error('❌ AppContext: No active shift found');
         throw new Error('Không có ca làm việc đang hoạt động');
       }
 
+      console.log('🚀 AppContext: Active shift found:', state.activeShift.name);
+
+      // Thêm check_out log trước khi tính toán status
+      console.log('🚀 AppContext: Adding check_out log for rapid press confirmation');
+      const updatedLogs = [...logs];
+      const checkOutLog = { type: 'check_out' as const, time: checkOutTime };
+      updatedLogs.push(checkOutLog);
+      await storageService.setAttendanceLogsForDate(today, updatedLogs);
+
       // Tính toán work status với xác nhận "bấm nhanh"
+      console.log('🚀 AppContext: Calling calculateDailyWorkStatusWithRapidPressConfirmed');
       const status = await workManager.calculateDailyWorkStatusWithRapidPressConfirmed(
         today,
-        logs,
+        updatedLogs,
         state.activeShift,
         checkInTime,
         checkOutTime
       );
 
+      console.log('🚀 AppContext: Calculated status:', status);
+
       // Lưu kết quả
+      console.log('🚀 AppContext: Saving status to storage');
       await storageService.setDailyWorkStatusNewForDate(today, status);
 
       // Refresh state
+      console.log('🚀 AppContext: Refreshing states');
       await refreshButtonState();
       await refreshWeeklyStatus();
 
       const todayStatus = await storageService.getDailyWorkStatusForDate(today);
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
 
-      console.log('✅ Đã xử lý xác nhận bấm nhanh thành công');
+      console.log('✅ AppContext: Đã xử lý xác nhận bấm nhanh thành công');
     } catch (error) {
-      console.error('Error handling rapid press confirmation:', error);
+      console.error('❌ AppContext: Error handling rapid press confirmation:', error);
       throw error;
     }
   };

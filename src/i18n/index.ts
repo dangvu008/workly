@@ -356,6 +356,26 @@ export interface TranslationKeys {
       complete: string;
     };
   };
+
+  // Alarms
+  alarms: {
+    departureTitle: string;
+    departureMessage: string;
+    checkinTitle: string;
+    checkinMessage: string;
+    checkoutTitle: string;
+    checkoutMessage: string;
+    snooze5min: string;
+    testTitle: string;
+    testMessage: string;
+  };
+
+  // Expo Go limitations
+  expo: {
+    bannerTitle: string;
+    bannerMessage: string;
+    bannerAlternative: string;
+  };
 }
 
 // Vietnamese translations
@@ -697,6 +717,24 @@ export const vi: TranslationKeys = {
       complete: 'Hoàn Tất',
     },
   },
+
+  alarms: {
+    departureTitle: 'Chuẩn bị đi làm',
+    departureMessage: 'Còn 30 phút nữa là giờ khởi hành ({time}) cho ca {shift}',
+    checkinTitle: 'Giờ chấm công vào',
+    checkinMessage: 'Đã đến giờ chấm công vào cho ca {shift}',
+    checkoutTitle: 'Giờ chấm công ra',
+    checkoutMessage: 'Đã đến giờ chấm công ra cho ca {shift}',
+    snooze5min: '⏰ Báo lại 5 phút',
+    testTitle: 'Test Báo thức',
+    testMessage: 'Hệ thống báo thức đang hoạt động bình thường!',
+  },
+
+  expo: {
+    bannerTitle: 'Chạy trong Expo Go',
+    bannerMessage: 'Push notifications không khả dụng trong Expo Go (SDK 53+). Hệ thống báo thức với rung vẫn hoạt động bình thường.',
+    bannerAlternative: '💡 Để có đầy đủ tính năng notifications, hãy sử dụng development build.',
+  },
 };
 
 // English translations
@@ -1037,6 +1075,24 @@ export const en: TranslationKeys = {
       checkOut: 'Check Out',
       complete: 'Complete',
     },
+  },
+
+  alarms: {
+    departureTitle: 'Prepare for Work',
+    departureMessage: '30 minutes until departure time ({time}) for shift {shift}',
+    checkinTitle: 'Check-in Time',
+    checkinMessage: 'Time to check in for shift {shift}',
+    checkoutTitle: 'Check-out Time',
+    checkoutMessage: 'Time to check out for shift {shift}',
+    snooze5min: '⏰ Snooze 5 min',
+    testTitle: 'Test Alarm',
+    testMessage: 'Alarm system is working properly!',
+  },
+
+  expo: {
+    bannerTitle: 'Running in Expo Go',
+    bannerMessage: 'Push notifications are not available in Expo Go (SDK 53+). Alarm system with vibration still works normally.',
+    bannerAlternative: '💡 For full notification features, please use a development build.',
   },
 };
 

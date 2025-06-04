@@ -415,7 +415,7 @@ class WorkManager {
   }
 
   /**
-   * Xử lý xác nhận "Bấm Nhanh" - tính đủ công theo lịch trình
+   * Xử lý xác nhận "Bấm Nhanh" - tính đủ công theo lịch trình (format mới)
    */
   async calculateDailyWorkStatusWithRapidPressConfirmed(
     date: string,
@@ -423,40 +423,68 @@ class WorkManager {
     shift: Shift,
     checkInTime: string,
     checkOutTime: string
-  ): Promise<DailyWorkStatus> {
+  ): Promise<DailyWorkStatusNew> {
     try {
       console.log('🚀 WorkManager: Processing rapid press confirmation');
 
-      // Tạo status với trạng thái DU_CONG và giờ làm việc theo lịch trình
-      const standardHours = 8; // Default standard hours
-      const dateObj = parseISO(date);
-      const isSunday = dateObj.getDay() === 0;
+      // Tính toán giờ làm việc theo lịch trình ca
+      const workHours = this.calculateScheduledWorkHours(date, shift);
 
-      const status: DailyWorkStatus = {
-        status: 'DU_CONG' as any,
+      const status: DailyWorkStatusNew = {
+        date,
+        status: 'DU_CONG',
         vaoLogTime: checkInTime,
         raLogTime: checkOutTime,
-        standardHoursScheduled: standardHours,
-        otHoursScheduled: 0,
-        sundayHoursScheduled: isSunday ? standardHours : 0,
-        nightHoursScheduled: shift.isNightShift ? standardHours : 0,
-        totalHoursScheduled: standardHours,
-        lateMinutes: 0,
-        earlyMinutes: 0,
-        isHolidayWork: false,
-        isManualOverride: false
+        standardHours: workHours.standardHours,
+        otHours: workHours.otHours,
+        totalHours: workHours.totalHours,
+        sundayHours: workHours.sundayHours,
+        nightHours: workHours.nightHours,
+        isHolidayWork: workHours.isHolidayWork,
+        notes: 'Xác nhận bấm nhanh - tính đủ công theo lịch trình'
       };
 
-      // Lưu vào storage
-      await storageService.setDailyWorkStatusForDate(date, status);
-      console.log('✅ WorkManager: Saved rapid press confirmed status');
-
+      console.log('✅ WorkManager: Rapid press confirmed status calculated:', status);
       return status;
 
     } catch (error) {
       console.error('Error processing rapid press confirmation:', error);
       throw error;
     }
+  }
+
+  /**
+   * Tính toán giờ làm việc theo lịch trình ca (không dựa vào logs thực tế)
+   */
+  private calculateScheduledWorkHours(date: string, shift: Shift): {
+    standardHours: number;
+    otHours: number;
+    totalHours: number;
+    sundayHours: number;
+    nightHours: number;
+    isHolidayWork: boolean;
+  } {
+    const dateObj = parseISO(date);
+    const isSunday = dateObj.getDay() === 0;
+
+    // Tính giờ làm việc chuẩn từ ca
+    const startTime = parseISO(`${date}T${shift.startTime}:00`);
+    const endTime = shift.isNightShift
+      ? parseISO(`${format(addDays(dateObj, 1), 'yyyy-MM-dd')}T${shift.endTime}:00`)
+      : parseISO(`${date}T${shift.endTime}:00`);
+
+    const totalMinutes = differenceInMinutes(endTime, startTime);
+    const workMinutes = totalMinutes - (shift.breakMinutes || 0);
+    const standardHours = Math.max(0, workMinutes / 60);
+
+    return {
+      standardHours,
+      otHours: 0, // Không tính OT cho rapid press confirmation
+      totalHours: standardHours,
+      sundayHours: isSunday ? standardHours : 0,
+      nightHours: shift.isNightShift ? standardHours : 0,
+      isHolidayWork: false // TODO: Check holiday calendar
+    };
   }
 
   /**
@@ -874,18 +902,61 @@ class WorkManager {
         return;
       }
 
-      // Schedule reminder for end of week (Friday evening)
+      // Schedule reminder for end of week (Saturday evening)
       const now = new Date();
-      const friday = new Date(now);
-      friday.setDate(now.getDate() + (5 - now.getDay() + 7) % 7);
-      friday.setHours(17, 0, 0, 0); // 5 PM Friday
+      const currentDay = now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+      const currentHour = now.getHours();
 
-      if (friday <= now) {
-        friday.setDate(friday.getDate() + 7); // Next Friday
+      console.log(`📅 WorkManager: Current time: ${now.toISOString()}`);
+      console.log(`📅 WorkManager: Current day: ${currentDay} (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)`);
+      console.log(`📅 WorkManager: Current hour: ${currentHour}`);
+
+      // Chỉ lập lịch nếu đang ở cuối tuần (Friday sau 5 PM hoặc Saturday trước 10 PM)
+      // hoặc nếu đã qua thời gian reminder của tuần này
+      const isFridayEvening = currentDay === 5 && currentHour >= 17; // Friday 5 PM+
+      const isSaturdayBeforeReminder = currentDay === 6 && currentHour < 22; // Saturday before 10 PM
+      const isSaturdayAfterReminder = currentDay === 6 && currentHour >= 22; // Saturday 10 PM+
+
+      console.log(`📅 WorkManager: Time checks - Friday evening: ${isFridayEvening}, Saturday before reminder: ${isSaturdayBeforeReminder}, Saturday after reminder: ${isSaturdayAfterReminder}`);
+
+      const saturday = new Date(now);
+      let daysToAdd = (6 - currentDay + 7) % 7; // 6 = Saturday
+
+      // Nếu hôm nay là Saturday, kiểm tra thời gian
+      if (daysToAdd === 0) {
+        // Nếu chưa đến 10 PM thì lập lịch cho hôm nay
+        // Nếu đã qua 10 PM thì lập lịch cho Saturday tuần sau
+        if (currentHour >= 22) {
+          daysToAdd = 7; // Saturday tuần sau
+        }
       }
 
-      await notificationService.scheduleWeeklyShiftReminder(friday);
-      console.log(`✅ WorkManager: Weekly reminder scheduled for ${friday.toISOString()}`);
+      console.log(`📅 WorkManager: Days to add to get next Saturday: ${daysToAdd}`);
+
+      saturday.setDate(now.getDate() + daysToAdd);
+      saturday.setHours(22, 0, 0, 0); // 10 PM Saturday
+      console.log(`📅 WorkManager: Calculated Saturday: ${saturday.toISOString()}`);
+
+      // Double check: nếu thời gian tính được vẫn trong quá khứ, thêm 7 ngày
+      if (saturday <= now) {
+        console.log(`📅 WorkManager: Saturday is still in the past, adding 7 more days`);
+        saturday.setDate(saturday.getDate() + 7); // Next Saturday
+      }
+
+      // Kiểm tra cuối cùng: chỉ lập lịch nếu thời gian hợp lý (ít nhất 1 ngày trong tương lai)
+      const timeDiff = saturday.getTime() - now.getTime();
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+
+      console.log(`📅 WorkManager: Time difference: ${timeDiff}ms (${daysDiff.toFixed(2)} days)`);
+
+      if (daysDiff < 0.5) { // Ít nhất 12 giờ trong tương lai
+        console.log(`📅 WorkManager: Reminder time too close (${daysDiff.toFixed(2)} days), adding 7 more days`);
+        saturday.setDate(saturday.getDate() + 7);
+      }
+
+      console.log(`📅 WorkManager: Final Saturday reminder time: ${saturday.toISOString()}`);
+      await notificationService.scheduleWeeklyShiftReminder(saturday);
+      console.log(`✅ WorkManager: Weekly reminder scheduled for ${saturday.toISOString()}`);
 
     } catch (error) {
       console.error('Error scheduling weekly reminder:', error);

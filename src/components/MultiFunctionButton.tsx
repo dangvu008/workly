@@ -186,10 +186,26 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       onPress?.();
     } catch (error) {
       console.error('Error in button press:', error);
+      console.log('🔍 MultiFunctionButton: Error details:', {
+        errorType: typeof error,
+        errorName: (error as any)?.name,
+        errorMessage: (error as any)?.message,
+        isError: error instanceof Error,
+        isRapidPress: (error as any)?.name === 'RapidPressDetectedException'
+      });
 
-      // Kiểm tra nếu là RapidPressDetectedException
-      if (error instanceof Error && error.name === 'RapidPressDetectedException') {
+      // Kiểm tra nếu là RapidPressDetectedException - sử dụng cách kiểm tra đơn giản hơn
+      if ((error as any)?.name === 'RapidPressDetectedException') {
+        console.log('🚀 MultiFunctionButton: Detected RapidPressDetectedException, showing confirmation dialog');
         const rapidError = error as any; // Type assertion để truy cập properties
+
+        console.log('🚀 MultiFunctionButton: RapidError details:', {
+          actualDurationSeconds: rapidError.actualDurationSeconds,
+          thresholdSeconds: rapidError.thresholdSeconds,
+          checkInTime: rapidError.checkInTime,
+          checkOutTime: rapidError.checkOutTime
+        });
+
         const durationText = rapidError.actualDurationSeconds < 60
           ? `${Math.round(rapidError.actualDurationSeconds)} ${t(currentLanguage, 'time.seconds')}`
           : `${Math.round(rapidError.actualDurationSeconds / 60 * 10) / 10} ${t(currentLanguage, 'time.minutes')}`;
@@ -210,10 +226,13 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               style: 'default',
               onPress: async () => {
                 try {
+                  console.log('🚀 MultiFunctionButton: User confirmed rapid press, calling handleRapidPressConfirmed');
                   await actions.handleRapidPressConfirmed(
                     rapidError.checkInTime,
                     rapidError.checkOutTime
                   );
+
+                  console.log('✅ MultiFunctionButton: handleRapidPressConfirmed completed successfully');
 
                   // Refresh logs status after confirmation
                   await checkTodayLogs();
@@ -226,7 +245,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
                   onPress?.();
                 } catch (confirmError) {
-                  console.error('Error confirming rapid press:', confirmError);
+                  console.error('❌ MultiFunctionButton: Error confirming rapid press:', confirmError);
                   Alert.alert(
                     t(currentLanguage, 'common.error'),
                     t(currentLanguage, 'common.error') + ': Không thể xác nhận. Vui lòng thử lại.',
@@ -491,7 +510,20 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
       await actions.handleButtonPress();
       onPress?.();
     } catch (error) {
-      Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
+      console.error('Error in simple button press:', error);
+
+      // Simple mode không nên có RapidPressDetectedException vì chỉ có một action duy nhất
+      // Nếu vẫn xảy ra, chỉ log và hiển thị lỗi chung
+      if (error instanceof Error && error.name === 'RapidPressDetectedException') {
+        console.warn('⚠️ RapidPressDetectedException in Simple mode - this should not happen');
+        Alert.alert(
+          t(currentLanguage, 'common.error'),
+          'Simple mode không hỗ trợ rapid press detection. Vui lòng chuyển sang Full mode.'
+        );
+      } else {
+        // Lỗi khác
+        Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Có lỗi xảy ra. Vui lòng thử lại.');
+      }
     } finally {
       setIsPressed(false);
     }

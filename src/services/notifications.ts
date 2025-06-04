@@ -671,33 +671,22 @@ class NotificationService {
         return;
       }
 
-      // Kiểm tra xem đã có weekly reminder được lập lịch chưa
-      const existingNotifications = await Notifications.getAllScheduledNotificationsAsync();
-      const existingWeeklyReminders = existingNotifications.filter(
+      // ✅ LUÔN LUÔN cancel existing weekly reminders trước để tránh trùng lặp
+      await this.cancelWeeklyReminders();
+      console.log('📅 NotificationService: Cancelled all existing weekly reminders');
+
+      // ✅ Kiểm tra lại sau khi cancel để đảm bảo không còn reminder nào
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+      const remainingWeeklyReminders = scheduledNotifications.filter(
         notification => notification.identifier.startsWith('weekly_reminder_')
       );
 
-      if (existingWeeklyReminders.length > 0) {
-        console.log(`📅 NotificationService: Found ${existingWeeklyReminders.length} existing weekly reminders, checking if update needed`);
-
-        // Kiểm tra xem có reminder nào gần với thời gian mong muốn không (trong vòng 1 giờ)
-        const hasNearbyReminder = existingWeeklyReminders.some(notification => {
-          if (notification.trigger && 'date' in notification.trigger && notification.trigger.date) {
-            const existingDate = new Date(notification.trigger.date);
-            const timeDiff = Math.abs(existingDate.getTime() - reminderDate.getTime());
-            return timeDiff < 60 * 60 * 1000; // 1 hour
-          }
-          return false;
-        });
-
-        if (hasNearbyReminder) {
-          console.log('📅 NotificationService: Similar weekly reminder already exists, skipping');
-          return;
+      if (remainingWeeklyReminders.length > 0) {
+        console.log(`⚠️ NotificationService: Still found ${remainingWeeklyReminders.length} weekly reminders after cancellation, force cancelling`);
+        for (const notification of remainingWeeklyReminders) {
+          await Notifications.cancelScheduledNotificationAsync(notification.identifier);
         }
       }
-
-      // Cancel existing weekly reminders
-      await this.cancelWeeklyReminders();
 
       const identifier = `weekly_reminder_${Date.now()}`;
       console.log(`📅 NotificationService: Creating notification with identifier: ${identifier}`);

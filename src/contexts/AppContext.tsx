@@ -240,6 +240,10 @@ export function AppProvider({ children }: AppProviderProps) {
         dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
       }
 
+      // ✅ Xóa tất cả thông báo cũ khi khởi động app để tránh trùng lặp
+      await notificationService.cancelWeeklyReminders();
+      console.log('🧹 AppContext: Cleaned up old weekly reminders on app startup');
+
       // Check for shift rotation and schedule reminders
       await workManager.checkAndRotateShifts();
 

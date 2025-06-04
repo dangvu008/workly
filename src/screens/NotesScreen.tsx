@@ -232,7 +232,7 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
-                {state.settings?.notesDisplayCount || 3} ▼
+                {`${state.settings?.notesDisplayCount || 3} ▼`}
               </Button>
             }
           >
@@ -284,10 +284,10 @@ export function NotesScreen({ navigation }: NotesScreenProps) {
                 labelStyle={styles.buttonLabel}
               >
                 {sortBy === 'priority'
-                  ? (currentLanguage === 'vi' ? 'Ưu tiên' : 'Priority')
+                  ? (currentLanguage === 'vi' ? 'Ưu tiên ▼' : 'Priority ▼')
                   : sortBy === 'date'
-                    ? (currentLanguage === 'vi' ? 'Ngày tạo' : 'Date')
-                    : 'ABC'} ▼
+                    ? (currentLanguage === 'vi' ? 'Ngày ▼' : 'Date ▼')
+                    : 'ABC ▼'}
               </Button>
             }
           >
@@ -408,36 +408,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12, // Reduced padding to give more space
-    paddingVertical: 10, // Slightly increased vertical padding
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
+    gap: 16, // Increased gap between control items
   },
   controlItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6, // Reduced gap to save space
-    flex: 1, // Allow items to take available space
-    marginHorizontal: 2, // Reduced margin between items
+    flex: 1, // Allow items to take equal space
+    gap: 6, // Reduced gap between label and button
+    maxWidth: '48%', // Limit width to prevent overlap
   },
   controlLabel: {
-    fontSize: 14,
+    fontSize: 13, // Slightly smaller font
     fontWeight: '500',
+    minWidth: 50, // Reduced minimum width
     flexShrink: 0, // Don't shrink labels
   },
   controlButton: {
-    flex: 1, // Take remaining space
-    minWidth: 100, // Increased minimum width
-    height: 36, // Increased height for better touch target
-    maxWidth: 140, // Prevent buttons from getting too wide
+    flex: 1, // Take remaining space in the control item
+    minHeight: 40, // Ensure adequate height for touch
+    borderRadius: 8,
+    maxWidth: 120, // Limit button width to prevent overflow
   },
   buttonContent: {
-    height: 36, // Match button height
-    paddingHorizontal: 8, // Reduce horizontal padding
+    height: 40, // Match button height
+    paddingHorizontal: 8, // Reduced padding to fit more text
+    justifyContent: 'center', // Center content vertically
   },
   buttonLabel: {
-    fontSize: 12, // Slightly smaller font to fit better
-    marginHorizontal: 0, // Remove default margin
+    fontSize: 12, // Smaller font size to fit better
+    textAlign: 'center', // Center text
+    lineHeight: 16, // Ensure proper line height
   },
   searchContainer: {
     paddingHorizontal: 16,

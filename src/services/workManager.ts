@@ -899,6 +899,8 @@ class WorkManager {
 
       if (settings.changeShiftReminderMode !== 'ask_weekly') {
         console.log('⏭️ WorkManager: Weekly reminder disabled');
+        // ✅ Cancel existing reminders khi tắt tính năng
+        await notificationService.cancelWeeklyReminders();
         return;
       }
 
@@ -911,13 +913,20 @@ class WorkManager {
       console.log(`📅 WorkManager: Current day: ${currentDay} (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)`);
       console.log(`📅 WorkManager: Current hour: ${currentHour}`);
 
-      // Chỉ lập lịch nếu đang ở cuối tuần (Friday sau 5 PM hoặc Saturday trước 10 PM)
-      // hoặc nếu đã qua thời gian reminder của tuần này
+      // ✅ CHỈ lập lịch khi thực sự cần thiết - gần cuối tuần
       const isFridayEvening = currentDay === 5 && currentHour >= 17; // Friday 5 PM+
       const isSaturdayBeforeReminder = currentDay === 6 && currentHour < 22; // Saturday before 10 PM
       const isSaturdayAfterReminder = currentDay === 6 && currentHour >= 22; // Saturday 10 PM+
 
       console.log(`📅 WorkManager: Time checks - Friday evening: ${isFridayEvening}, Saturday before reminder: ${isSaturdayBeforeReminder}, Saturday after reminder: ${isSaturdayAfterReminder}`);
+
+      // ✅ CHỈ lập lịch khi đang ở cuối tuần hoặc đã qua thời gian reminder
+      const shouldSchedule = isFridayEvening || isSaturdayBeforeReminder || isSaturdayAfterReminder;
+
+      if (!shouldSchedule) {
+        console.log(`📅 WorkManager: Not end of week yet (current day: ${currentDay}), skipping weekly reminder scheduling`);
+        return;
+      }
 
       const saturday = new Date(now);
       let daysToAdd = (6 - currentDay + 7) % 7; // 6 = Saturday

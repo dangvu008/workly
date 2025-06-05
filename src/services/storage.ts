@@ -9,7 +9,8 @@ import {
   PublicHoliday,
   WeatherData
 } from '../types';
-import { STORAGE_KEYS, DEFAULT_SETTINGS, DEFAULT_SHIFTS, DEFAULT_HOLIDAYS } from '../constants';
+import { STORAGE_KEYS, DEFAULT_SETTINGS, DEFAULT_HOLIDAYS } from '../constants';
+import { createSampleShifts, updateShiftNamesForLanguage } from './sampleShifts';
 
 class StorageService {
   // Generic storage methods
@@ -54,6 +55,13 @@ class StorageService {
   async updateUserSettings(updates: Partial<UserSettings>): Promise<UserSettings> {
     const currentSettings = await this.getUserSettings();
     const newSettings = { ...currentSettings, ...updates };
+
+    // ✅ Nếu thay đổi ngôn ngữ, cập nhật tên ca mẫu
+    if (updates.language && updates.language !== currentSettings.language) {
+      await this.updateShiftNamesForLanguage(updates.language);
+      console.log(`🌐 Updated shift names for language: ${updates.language}`);
+    }
+
     await this.setUserSettings(newSettings);
     return newSettings;
   }
@@ -62,11 +70,11 @@ class StorageService {
   async getShiftList(): Promise<Shift[]> {
     const shifts = await this.getItem(STORAGE_KEYS.SHIFT_LIST, null);
     if (shifts === null) {
-      // Khởi tạo shifts theo ngôn ngữ hiện tại
+      // ✅ Khởi tạo sample shifts theo ngôn ngữ hiện tại
       const settings = await this.getUserSettings();
-      const defaultShifts = DEFAULT_SHIFTS[settings.language as keyof typeof DEFAULT_SHIFTS] || DEFAULT_SHIFTS.vi;
-      await this.setShiftList(defaultShifts);
-      return defaultShifts;
+      const sampleShifts = createSampleShifts(settings.language);
+      await this.setShiftList(sampleShifts);
+      return sampleShifts;
     }
     return shifts;
   }
@@ -95,6 +103,16 @@ class StorageService {
     const shifts = await this.getShiftList();
     const filteredShifts = shifts.filter(s => s.id !== shiftId);
     return this.setShiftList(filteredShifts);
+  }
+
+  /**
+   * ✅ Cập nhật tên ca mẫu khi thay đổi ngôn ngữ
+   * @param language - Ngôn ngữ mới
+   */
+  async updateShiftNamesForLanguage(language: string): Promise<void> {
+    const currentShifts = await this.getShiftList();
+    const updatedShifts = updateShiftNamesForLanguage(currentShifts, language);
+    await this.setShiftList(updatedShifts);
   }
 
   // Active Shift

@@ -15,8 +15,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
-import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
+import { WEEKLY_STATUS } from '../constants';
 import { t } from '../i18n';
+import { getDayNamesMapping } from '../services/sampleShifts';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
@@ -67,11 +68,12 @@ export function StatisticsScreen({ navigation }: StatisticsScreenProps) {
     }
   };
 
-  // Hàm lấy tên thứ viết tắt theo ngôn ngữ hiện tại
+  // ✅ Hàm lấy tên thứ viết tắt theo ngôn ngữ hiện tại sử dụng sampleShifts service
   const getDayAbbreviation = (date: Date): string => {
     const dayNumber = date.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ...
     const currentLanguage = state.settings?.language || 'vi';
-    return DAYS_OF_WEEK[currentLanguage as keyof typeof DAYS_OF_WEEK][dayNumber];
+    const dayNames = getDayNamesMapping(currentLanguage);
+    return dayNames[dayNumber as keyof typeof dayNames];
   };
 
   const getFilteredData = () => {

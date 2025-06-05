@@ -104,24 +104,13 @@ class WorkManager {
       }
 
       if (!hasCheckOut) {
-        // Kiểm tra thời gian để quyết định working hay check_out
-        if (currentTime < activeShift.endTime) {
-          console.log('🔘 WorkManager: Before end time, returning working');
-          return 'working';
-        }
-        console.log('🔘 WorkManager: After end time, returning awaiting_check_out');
-        return 'awaiting_check_out';
+        // ✅ Loại bỏ trạng thái working - chuyển thẳng sang check_out sau check_in
+        console.log('🔘 WorkManager: Has check_in but no check_out, returning check_out');
+        return 'check_out';
       }
 
-      if (!hasComplete) {
-        // Có check_out rồi, kiểm tra thời gian để quyết định awaiting_complete hay complete
-        if (currentTime < activeShift.officeEndTime) {
-          console.log('🔘 WorkManager: Before office end time, returning awaiting_complete');
-          return 'awaiting_complete';
-        }
-        console.log('🔘 WorkManager: After office end time, returning complete');
-        return 'complete';
-      }
+      // ✅ Đã có check_out và complete (tự động thêm), trả về completed_day
+      // Không cần kiểm tra thời gian nữa vì đã tự động complete
 
       // Đã hoàn tất tất cả
       console.log('🔘 WorkManager: Has complete log, returning completed_day');
@@ -158,8 +147,6 @@ class WorkManager {
           await this.addAttendanceLog(today, 'check_in', now);
           break;
 
-        case 'working':
-        case 'awaiting_check_out':
         case 'check_out':
           // Tất cả các trạng thái này đều thực hiện check_out
           // Kiểm tra rapid press logic trước
@@ -185,16 +172,13 @@ class WorkManager {
           }
 
           await this.addAttendanceLog(today, 'check_out', now);
-          break;
 
-        case 'awaiting_complete':
-          // Trong trạng thái awaiting, bấm nút sẽ thực hiện complete
+          // ✅ Tự động thêm complete log ngay sau check_out để hoàn tất quy trình
+          console.log('🚀 WorkManager: Auto-completing after check_out');
           await this.addAttendanceLog(today, 'complete', now);
           break;
 
-        case 'complete':
-          await this.addAttendanceLog(today, 'complete', now);
-          break;
+        // ✅ Loại bỏ các case awaiting_complete và complete vì đã tự động complete sau check_out
 
         default:
           console.log(`🔘 WorkManager: No action for state: ${currentState}`);
@@ -220,14 +204,55 @@ class WorkManager {
     try {
       const logs = await storageService.getAttendanceLogsForDate(date);
       const newLog: AttendanceLog = { type, time };
-      
+
       logs.push(newLog);
       await storageService.setAttendanceLogsForDate(date, logs);
-      
+
       console.log(`📝 WorkManager: Added ${type} log at ${time}`);
+
+      // ✅ Tự động hủy thông báo tương ứng khi người dùng thực hiện hành động
+      await this.cancelRelatedNotification(type, date);
+
     } catch (error) {
       console.error('Error adding attendance log:', error);
       throw error;
+    }
+  }
+
+  /**
+   * ✅ Hủy thông báo liên quan khi người dùng thực hiện hành động
+   */
+  private async cancelRelatedNotification(action: AttendanceLog['type'], date: string): Promise<void> {
+    try {
+      const { notificationService } = await import('./notifications');
+      const activeShiftId = await storageService.getActiveShiftId();
+
+      if (!activeShiftId) return;
+
+      // Map action to notification type (đúng với tên identifier trong NotificationService)
+      let notificationType: 'go_work' | 'check_in' | 'check_out' | null = null;
+
+      switch (action) {
+        case 'go_work':
+          notificationType = 'go_work'; // Maps to 'departure_' identifier
+          break;
+        case 'check_in':
+          notificationType = 'check_in'; // Maps to 'checkin_' identifier
+          break;
+        case 'check_out':
+          notificationType = 'check_out'; // Maps to 'checkout_' identifier
+          break;
+        default:
+          return; // Không hủy thông báo cho các action khác
+      }
+
+      if (notificationType) {
+        await notificationService.cancelReminderAfterAction(notificationType, activeShiftId, date);
+        console.log(`🔕 WorkManager: Đã hủy thông báo ${notificationType} sau khi thực hiện ${action}`);
+      }
+    } catch (error) {
+      console.error('❌ WorkManager: Lỗi hủy thông báo liên quan:', error);
+      // Không throw error để không ảnh hưởng đến việc ghi log chính
     }
   }
 
@@ -251,8 +276,8 @@ class WorkManager {
       // Convert to old format for compatibility
       const dailyStatus: DailyWorkStatus = {
         status: status.status as any,
-        vaoLogTime: status.vaoLogTime,
-        raLogTime: status.raLogTime,
+        vaoLogTime: status.vaoLogTime || undefined,
+        raLogTime: status.raLogTime || undefined,
         standardHoursScheduled: status.standardHours,
         otHoursScheduled: status.otHours,
         sundayHoursScheduled: status.sundayHours,
@@ -266,6 +291,15 @@ class WorkManager {
 
       await storageService.setDailyWorkStatusForDate(date, dailyStatus);
       console.log(`💾 WorkManager: Saved daily work status for ${date}:`, status.status);
+
+      // ✅ Debug: Log chi tiết trạng thái đã lưu
+      console.log('🔍 WorkManager: Daily status details:', {
+        date,
+        status: status.status,
+        hasCompleteLog: logs.some(log => log.type === 'complete'),
+        totalLogs: logs.length,
+        logTypes: logs.map(log => log.type)
+      });
 
     } catch (error) {
       console.error('Error calculating and saving daily work status:', error);
@@ -676,10 +710,23 @@ class WorkManager {
       }
 
       // Tính toán lại trạng thái dựa trên logs
-      const workStatus = await this.calculateDailyWorkStatus(date, activeShift, logs);
+      const newStatus = await this.calculateDailyWorkStatusNew(date, logs, activeShift);
 
-      // Xóa manual override flag
-      workStatus.isManualOverride = false;
+      // Convert to old format for compatibility
+      const workStatus: DailyWorkStatus = {
+        status: newStatus.status as any,
+        vaoLogTime: newStatus.vaoLogTime || undefined,
+        raLogTime: newStatus.raLogTime || undefined,
+        standardHoursScheduled: newStatus.standardHours,
+        otHoursScheduled: newStatus.otHours,
+        sundayHoursScheduled: newStatus.sundayHours,
+        nightHoursScheduled: newStatus.nightHours,
+        totalHoursScheduled: newStatus.totalHours,
+        lateMinutes: 0, // TODO: Calculate based on logs vs schedule
+        earlyMinutes: 0, // TODO: Calculate based on logs vs schedule
+        isHolidayWork: newStatus.isHolidayWork,
+        isManualOverride: false // Xóa manual override flag
+      };
 
       await storageService.setDailyWorkStatusForDate(date, workStatus);
       console.log('✅ WorkManager: Status recalculated from logs');
@@ -764,38 +811,7 @@ class WorkManager {
     }
   }
 
-  /**
-   * Tính lại từ attendance logs
-   */
-  async recalculateFromAttendanceLogs(date: string): Promise<void> {
-    try {
-      console.log(`🔄 WorkManager: Recalculating from attendance logs for ${date}`);
-
-      const activeShiftId = await storageService.getActiveShiftId();
-      const shifts = await storageService.getShiftList();
-      const activeShift = activeShiftId ? shifts.find((s: Shift) => s.id === activeShiftId) : null;
-
-      if (!activeShift) {
-        throw new Error('Không có ca làm việc đang hoạt động');
-      }
-
-      // Recalculate status based on logs
-      await this.calculateAndSaveDailyWorkStatus(date);
-
-      // Mark as not manual override
-      const status = await storageService.getDailyWorkStatusForDate(date);
-      if (status) {
-        status.isManualOverride = false;
-        await storageService.setDailyWorkStatusForDate(date, status);
-      }
-
-      console.log('✅ WorkManager: Recalculation completed');
-
-    } catch (error) {
-      console.error('Error recalculating from attendance logs:', error);
-      throw error;
-    }
-  }
+  // ✅ Function đã được định nghĩa ở trên, xóa duplicate này
 
   /**
    * Xóa trạng thái thủ công và tính lại

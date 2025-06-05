@@ -152,12 +152,9 @@ export type ButtonState =
   | 'go_work'
   | 'awaiting_check_in'
   | 'check_in'
-  | 'working'
-  | 'awaiting_check_out'
   | 'check_out'
-  | 'awaiting_complete'
-  | 'complete'
   | 'completed_day';
+  // ✅ Loại bỏ working, awaiting_check_out, awaiting_complete, complete vì đã tự động complete sau check_out
 
 // Exception for rapid press detection - yêu cầu xác nhận từ người dùng
 export class RapidPressDetectedException extends Error {

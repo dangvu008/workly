@@ -240,9 +240,16 @@ export function AppProvider({ children }: AppProviderProps) {
         dispatch({ type: 'SET_WEATHER_DATA', payload: weatherData });
       }
 
-      // ✅ Xóa tất cả thông báo cũ khi khởi động app để tránh trùng lặp
+      // ✅ Dọn dẹp toàn bộ thông báo cũ khi khởi động app để tránh trùng lặp
+      console.log('🧹 AppContext: Bắt đầu dọn dẹp thông báo cũ khi khởi động app...');
+
+      // Hủy tất cả shift reminders cũ
+      await notificationService.cancelAllShiftReminders();
+      console.log('🧹 AppContext: Đã hủy tất cả shift reminders cũ');
+
+      // Hủy tất cả weekly reminders cũ
       await notificationService.cancelWeeklyReminders();
-      console.log('🧹 AppContext: Cleaned up old weekly reminders on app startup');
+      console.log('🧹 AppContext: Đã hủy tất cả weekly reminders cũ');
 
       // Check for shift rotation and schedule reminders
       await workManager.checkAndRotateShifts();
@@ -252,6 +259,8 @@ export function AppProvider({ children }: AppProviderProps) {
       if (activeShiftId) {
         await workManager.scheduleWeeklyReminder();
       }
+
+      console.log('✅ AppContext: Hoàn thành dọn dẹp và lập lịch lại thông báo');
 
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -303,15 +312,23 @@ export function AppProvider({ children }: AppProviderProps) {
         }
       }
 
-      // Schedule new shift reminders (both notifications and alarms)
+      // ✅ Dọn dẹp và lập lịch lại thông báo cho ca mới
+      console.log('🔄 AppContext: Bắt đầu cập nhật thông báo cho ca mới...');
+
+      // Hủy tất cả thông báo cũ trước
+      await notificationService.cancelAllShiftReminders();
+      await alarmService.cancelShiftReminders();
+      await notificationService.cancelWeeklyReminders();
+      console.log('🧹 AppContext: Đã hủy tất cả thông báo cũ');
+
+      // Lập lịch thông báo mới nếu có active shift
       if (activeShift) {
         await notificationService.scheduleShiftReminders(activeShift);
         await alarmService.scheduleShiftReminder(activeShift);
         await workManager.scheduleWeeklyReminder();
+        console.log(`✅ AppContext: Đã lập lịch thông báo cho ca ${activeShift.name}`);
       } else {
-        await notificationService.cancelShiftReminders();
-        await alarmService.cancelShiftReminders();
-        await notificationService.cancelWeeklyReminders();
+        console.log('ℹ️ AppContext: Không có ca hoạt động, bỏ qua lập lịch thông báo');
       }
 
       // Refresh button state and time display info
@@ -500,6 +517,12 @@ export function AppProvider({ children }: AppProviderProps) {
       const updatedLogs = [...logs];
       const checkOutLog = { type: 'check_out' as const, time: checkOutTime };
       updatedLogs.push(checkOutLog);
+
+      // ✅ Tự động thêm complete log ngay sau check_out để hoàn tất quy trình
+      console.log('🚀 AppContext: Auto-adding complete log for rapid press confirmation');
+      const completeLog = { type: 'complete' as const, time: checkOutTime };
+      updatedLogs.push(completeLog);
+
       await storageService.setAttendanceLogsForDate(today, updatedLogs);
 
       // Tính toán work status với xác nhận "bấm nhanh"

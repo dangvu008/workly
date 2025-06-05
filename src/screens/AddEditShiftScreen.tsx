@@ -20,6 +20,7 @@ import { Shift } from '../types';
 import { RootStackParamList } from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
+import { getDayNamesMapping } from '../services/sampleShifts';
 
 type AddEditShiftScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AddEditShift'>;
 
@@ -86,6 +87,9 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
   useEffect(() => {
     if (existingShift) {
+      // Tự động phân loại ca đêm dựa trên giờ làm việc hiện tại
+      const autoDetectedNightShift = isNightShiftTime(existingShift.startTime, existingShift.endTime);
+
       setFormData({
         name: existingShift.name,
         startTime: existingShift.startTime,
@@ -97,7 +101,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         remindAfterEnd: existingShift.remindAfterEnd || 10,
         showPunch: existingShift.showPunch,
         breakMinutes: existingShift.breakMinutes,
-        isNightShift: existingShift.isNightShift,
+        isNightShift: autoDetectedNightShift, // Sử dụng auto-detection thay vì giá trị cũ
         workDays: existingShift.workDays,
         applyNow: false,
       });
@@ -165,7 +169,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     setShowStartTimePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const timeString = dateToTimeString(selectedDate);
-      setFormData(prev => ({ ...prev, startTime: timeString }));
+      setFormData(prev => {
+        const newData = { ...prev, startTime: timeString };
+        // Tự động cập nhật trạng thái ca đêm
+        const isNight = isNightShiftTime(timeString, prev.endTime);
+        return { ...newData, isNightShift: isNight };
+      });
     }
   };
 
@@ -173,7 +182,12 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
     setShowEndTimePicker(Platform.OS === 'ios');
     if (selectedDate) {
       const timeString = dateToTimeString(selectedDate);
-      setFormData(prev => ({ ...prev, endTime: timeString }));
+      setFormData(prev => {
+        const newData = { ...prev, endTime: timeString };
+        // Tự động cập nhật trạng thái ca đêm
+        const isNight = isNightShiftTime(prev.startTime, timeString);
+        return { ...newData, isNightShift: isNight };
+      });
     }
   };
 
@@ -193,6 +207,34 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
       setErrors(prev => ({ ...prev, departureTime: '' }));
     }
   };
+
+  // Function để kiểm tra ca đêm dựa trên giờ làm việc
+  const isNightShiftTime = (startTime: string, endTime: string): boolean => {
+    const [startHour] = startTime.split(':').map(Number);
+    const [endHour] = endTime.split(':').map(Number);
+
+    // Ca đêm: ca làm việc có thời gian bao trùm hoặc chồng lấp lên khoảng 22h tối đến 5h sáng hôm sau
+
+    const isOvernight = endHour < startHour;
+
+    if (isOvernight) {
+      // Ca qua đêm: kiểm tra xem có bao trùm khoảng 22h-5h không
+      // Ví dụ: 20h-8h (bao trùm hoàn toàn), 23h-3h (nằm trong), 18h-2h (bao trùm một phần)
+
+      // Ca qua đêm bao trùm khoảng 22h-5h nếu:
+      // - Bắt đầu <= 22h VÀ kết thúc >= 5h (bao trùm hoàn toàn: VD 20h-8h, 18h-6h)
+      // - Bắt đầu >= 22h (bao trùm từ 22h: VD 23h-3h, 22h-8h)
+      // - Kết thúc <= 5h (bao trùm đến 5h: VD 18h-3h, 20h-5h)
+      return (startHour <= 22 && endHour >= 5) || startHour >= 22 || endHour <= 5;
+    } else {
+      // Ca trong cùng ngày: chỉ là ca đêm nếu nằm trong khoảng đêm
+      // - Bắt đầu từ 22h trở đi (VD: 22h-23h59)
+      // - Kết thúc đến 5h trở về (VD: 0h-5h, 1h-4h)
+      return startHour >= 22 || endHour <= 5;
+    }
+  };
+
+
 
   // TimePickerField component
   const TimePickerField = ({
@@ -348,6 +390,9 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
   const handleReset = () => {
     if (isEditing && existingShift) {
+      // Tự động phân loại ca đêm dựa trên giờ làm việc hiện tại
+      const autoDetectedNightShift = isNightShiftTime(existingShift.startTime, existingShift.endTime);
+
       setFormData({
         name: existingShift.name,
         startTime: existingShift.startTime,
@@ -359,15 +404,20 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         remindAfterEnd: existingShift.remindAfterEnd || 10,
         showPunch: existingShift.showPunch,
         breakMinutes: existingShift.breakMinutes,
-        isNightShift: existingShift.isNightShift,
+        isNightShift: autoDetectedNightShift, // Sử dụng auto-detection
         workDays: existingShift.workDays,
         applyNow: false,
       });
     } else {
+      // Cho ca mới, tự động phân loại dựa trên giờ mặc định
+      const defaultStartTime = '08:00';
+      const defaultEndTime = '17:00';
+      const autoDetectedNightShift = isNightShiftTime(defaultStartTime, defaultEndTime);
+
       setFormData({
         name: '',
-        startTime: '08:00',
-        endTime: '17:00',
+        startTime: defaultStartTime,
+        endTime: defaultEndTime,
         officeEndTime: '17:00',
         departureTime: '07:30',
         daysApplied: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
@@ -375,7 +425,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         remindAfterEnd: 10,
         showPunch: false,
         breakMinutes: 60,
-        isNightShift: false,
+        isNightShift: autoDetectedNightShift, // Sử dụng auto-detection (sẽ là false cho 8h-17h)
         workDays: [1, 2, 3, 4, 5, 6],
         applyNow: applyImmediately,
       });
@@ -424,6 +474,16 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
               {errors.name}
             </HelperText>
 
+            <TimePickerField
+              label={t(currentLanguage, 'shifts.departureTime')}
+              value={formData.departureTime}
+              onPress={() => setShowDepartureTimePicker(true)}
+              error={!!errors.departureTime}
+            />
+            <HelperText type="error" visible={!!errors.departureTime}>
+              {errors.departureTime}
+            </HelperText>
+
             <View style={styles.row}>
               <TimePickerField
                 label={t(currentLanguage, 'shifts.startTime')}
@@ -444,16 +504,6 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
               value={formData.officeEndTime}
               onPress={() => setShowOfficeEndTimePicker(true)}
             />
-
-            <TimePickerField
-              label={t(currentLanguage, 'shifts.departureTime')}
-              value={formData.departureTime}
-              onPress={() => setShowDepartureTimePicker(true)}
-              error={!!errors.departureTime}
-            />
-            <HelperText type="error" visible={!!errors.departureTime}>
-              {errors.departureTime}
-            </HelperText>
 
             <TextInput
               label={t(currentLanguage, 'shifts.breakMinutes')}
@@ -514,9 +564,13 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
 
             <View style={styles.daysContainer}>
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((dayString) => {
-                const dayLabels = currentLanguage === 'vi'
-                  ? { Mon: 'T2', Tue: 'T3', Wed: 'T4', Thu: 'T5', Fri: 'T6', Sat: 'T7', Sun: 'CN' }
-                  : { Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat', Sun: 'Sun' };
+                // ✅ Sử dụng getDayNamesMapping từ sampleShifts service
+                const dayNames = getDayNamesMapping(currentLanguage);
+                const dayMap: { [key: string]: number } = {
+                  'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 0
+                };
+                const dayNumber = dayMap[dayString];
+                const dayLabel = dayNames[dayNumber as keyof typeof dayNames];
 
                 return (
                   <Chip
@@ -526,7 +580,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
                     onPress={() => handleDaysAppliedToggle(dayString)}
                     style={styles.dayChip}
                   >
-                    {dayLabels[dayString as keyof typeof dayLabels]}
+                    {dayLabel}
                   </Chip>
                 );
               })}

@@ -199,12 +199,8 @@ class TimeSyncService {
       return 'check_out'; // "CHẤM CÔNG RA"
     }
 
-    // 4. Đã có check_out, chưa có complete
-    if (!completeLog) {
-      return 'complete'; // "HOÀN TẤT" (luôn cho phép)
-    }
-
-    // 5. Đã hoàn tất tất cả
+    // 4. Đã có check_out - tự động hoàn tất
+    // ✅ Không cần trạng thái complete riêng biệt nữa vì đã tự động complete sau check_out
     return 'completed_day'; // "ĐÃ HOÀN TẤT"
   }
 

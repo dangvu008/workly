@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { PaperProvider } from 'react-native-paper';
+import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppProvider, useApp } from './src/contexts/AppContext';
@@ -11,6 +12,8 @@ import { lightTheme, darkTheme } from './src/constants/themes';
 import { t } from './src/i18n';
 import { RootStackParamList, TabParamList } from './src/types';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { TabBarIcon } from './src/components/OptimizedIconButton';
+import { initializeIconPreloader } from './src/services/iconPreloader';
 
 // Screens
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -57,7 +60,8 @@ function MainTabs() {
               iconName = 'circle';
           }
 
-          return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+          // ✅ Sử dụng TabBarIcon được tối ưu thay vì MaterialCommunityIcons trực tiếp
+          return <TabBarIcon focused={focused} color={color} size={size} iconName={iconName} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
@@ -141,12 +145,54 @@ function AppNavigator() {
   );
 }
 
+/**
+ * ✅ Loading Screen component hiển thị khi đang preload icons
+ */
+function LoadingScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <ActivityIndicator size="large" color="#6200ee" />
+      <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
+        Đang tải icons...
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * ✅ App with Icon Preloader
+ */
+function AppWithPreloader() {
+  const [isIconsReady, setIsIconsReady] = useState(false);
+
+  useEffect(() => {
+    const preloadIcons = async () => {
+      try {
+        await initializeIconPreloader();
+        setIsIconsReady(true);
+      } catch (error) {
+        console.error('❌ Error preloading icons:', error);
+        // Vẫn cho phép app chạy ngay cả khi preload thất bại
+        setIsIconsReady(true);
+      }
+    };
+
+    preloadIcons();
+  }, []);
+
+  if (!isIconsReady) {
+    return <LoadingScreen />;
+  }
+
+  return <AppNavigator />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <AppProvider>
-          <AppNavigator />
+          <AppWithPreloader />
         </AppProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

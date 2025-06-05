@@ -118,6 +118,15 @@ export interface TranslationKeys {
       workDaysRequired: string;
       breakMinutesInvalid: string;
     };
+    // Default shift names for sample data
+    defaultShifts: {
+      morning: string;
+      afternoon: string;
+      night: string;
+      administrative: string;
+      flexible: string;
+      weekendNight: string;
+    };
   };
 
   // Notes
@@ -498,6 +507,15 @@ export const vi: TranslationKeys = {
       remindAfterEndInvalid: 'Thời gian nhắc sau phải từ 0-120 phút',
       departureTimeInvalid: 'Giờ khởi hành phải trước giờ bắt đầu',
     },
+    // Default shift names for sample data
+    defaultShifts: {
+      morning: 'Ca 1 (Sáng)',
+      afternoon: 'Ca 2 (Chiều)',
+      night: 'Ca 3 (Đêm)',
+      administrative: 'Ca Hành Chính',
+      flexible: 'Ca Ngày Linh Hoạt',
+      weekendNight: 'Ca Đêm Cuối Tuần'
+    },
   },
 
   notes: {
@@ -862,6 +880,15 @@ export const en: TranslationKeys = {
       remindBeforeStartInvalid: 'Remind before start must be between 0-120 minutes',
       remindAfterEndInvalid: 'Remind after end must be between 0-120 minutes',
       departureTimeInvalid: 'Departure time must be before start time',
+    },
+    // Default shift names for sample data
+    defaultShifts: {
+      morning: 'Shift 1 (Morning)',
+      afternoon: 'Shift 2 (Afternoon)',
+      night: 'Shift 3 (Night)',
+      administrative: 'Administrative Shift',
+      flexible: 'Flexible Day Shift',
+      weekendNight: 'Weekend Night Shift'
     },
   },
 

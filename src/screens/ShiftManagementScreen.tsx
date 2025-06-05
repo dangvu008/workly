@@ -22,6 +22,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { t } from '../i18n';
 import { WorklyBackground } from '../components/WorklyBackground';
+import { formatWorkDays as formatWorkDaysFromService } from '../services/sampleShifts';
 
 type ShiftManagementScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'ShiftsTab'>,
@@ -168,9 +169,9 @@ export function ShiftManagementScreen({ navigation, route }: ShiftManagementScre
     }
   };
 
+  // ✅ Sử dụng formatWorkDays từ sampleShifts service với đa ngôn ngữ
   const formatWorkDays = (workDays: number[]): string => {
-    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    return workDays.map(day => dayNames[day]).join(', ');
+    return formatWorkDaysFromService(workDays, currentLanguage);
   };
 
   const renderShiftItem = (shift: Shift) => {

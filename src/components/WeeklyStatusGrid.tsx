@@ -4,12 +4,13 @@ import { Text, useTheme, Menu } from 'react-native-paper';
 import { format, addDays, startOfWeek, isFuture, isToday, isPast } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
-import { WEEKLY_STATUS, DAYS_OF_WEEK } from '../constants';
+import { WEEKLY_STATUS } from '../constants';
 import { DailyWorkStatus } from '../types';
 import { storageService } from '../services/storage';
 import { workManager } from '../services/workManager';
 import { ManualStatusUpdateModal } from './ManualStatusUpdateModal';
 import { t } from '../i18n';
+import { getDayNamesMapping } from '../services/sampleShifts';
 
 interface WeeklyStatusGridProps {
   onDayPress?: (date: string) => void;
@@ -226,8 +227,9 @@ export function WeeklyStatusGrid({ onDayPress }: WeeklyStatusGridProps) {
 
   const renderDayItem = (date: Date, index: number) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    const language = (state.settings?.language || 'vi') as keyof typeof DAYS_OF_WEEK;
-    const dayName = DAYS_OF_WEEK[language][index];
+    const language = state.settings?.language || 'vi';
+    const dayNames = getDayNamesMapping(language);
+    const dayName = dayNames[index as keyof typeof dayNames];
     const dayNumber = format(date, 'd');
     const statusIcon = getStatusIcon(date);
     const statusColor = getStatusColor(date);

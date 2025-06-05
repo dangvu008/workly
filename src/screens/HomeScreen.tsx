@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
-import { Text, Card, IconButton, useTheme, Button, Divider } from 'react-native-paper';
+import { Text, Card, useTheme, Button, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { vi, enUS } from 'date-fns/locale';
@@ -16,6 +16,7 @@ import ExpoGoBanner from '../components/ExpoGoBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { WorklyBackground } from '../components/WorklyBackground';
+import { OptimizedIconButton } from '../components/OptimizedIconButton';
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -402,7 +403,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 {t(currentLanguage, 'home.currentShift')}
               </Text>
-              <IconButton
+              <OptimizedIconButton
                 icon="pencil"
                 size={20}
                 iconColor={theme.colors.primary}
@@ -455,7 +456,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 {t(currentLanguage, 'home.upcomingReminders')}
               </Text>
-              <IconButton
+              <OptimizedIconButton
                 icon="menu"
                 size={20}
                 iconColor={theme.colors.primary}
@@ -511,39 +512,35 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                           </View>
                         </View>
                         <View style={styles.noteActions}>
-                          <IconButton
+                          <OptimizedIconButton
                             icon="pencil"
                             size={14}
                             iconColor={theme.colors.primary}
-                            onPress={(e) => {
-                              e.stopPropagation();
+                            onPress={() => {
                               navigation.navigate('NoteDetail', { noteId: note.id });
                             }}
                           />
-                          <IconButton
+                          <OptimizedIconButton
                             icon="bell-sleep"
                             size={14}
                             iconColor={theme.colors.secondary}
-                            onPress={(e) => {
-                              e.stopPropagation();
+                            onPress={() => {
                               handleSnoozeNote(note);
                             }}
                           />
-                          <IconButton
+                          <OptimizedIconButton
                             icon="eye-off"
                             size={14}
                             iconColor={theme.colors.outline}
-                            onPress={(e) => {
-                              e.stopPropagation();
+                            onPress={() => {
                               handleHideNote(note);
                             }}
                           />
-                          <IconButton
+                          <OptimizedIconButton
                             icon="delete"
                             size={14}
                             iconColor={theme.colors.error}
-                            onPress={(e) => {
-                              e.stopPropagation();
+                            onPress={() => {
                               handleDeleteNote(note);
                             }}
                           />
@@ -570,6 +567,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             </Button>
           </Card.Content>
         </AnimatedCard>
+
         </ScrollView>
       </SafeAreaView>
     </WorklyBackground>

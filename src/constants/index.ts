@@ -63,31 +63,13 @@ export const BUTTON_STATES = {
     icon: 'login', // Icon cơ bản và hợp lệ
     color: '#2196F3',
   },
-  working: {
-    text: 'ĐANG LÀM VIỆC',
-    icon: 'briefcase',
-    color: '#9C27B0',
-  },
-  awaiting_check_out: {
-    text: 'CHỜ CHECK-OUT',
-    icon: 'clock-outline',
-    color: '#FF9800',
-  },
+  // ✅ Loại bỏ working và awaiting_check_out
   check_out: {
     text: 'CHẤM CÔNG RA',
     icon: 'logout', // Icon cơ bản và hợp lệ
     color: '#FF5722',
   },
-  awaiting_complete: {
-    text: 'CHỜ HOÀN TẤT',
-    icon: 'timer-sand', // Icon cơ bản và hợp lệ
-    color: '#795548',
-  },
-  complete: {
-    text: 'HOÀN TẤT',
-    icon: 'check-circle',
-    color: '#4CAF50',
-  },
+  // ✅ Loại bỏ awaiting_complete và complete vì đã tự động complete sau check_out
   completed_day: {
     text: 'ĐÃ HOÀN TẤT',
     icon: 'target', // Icon cơ bản và hợp lệ
@@ -387,7 +369,9 @@ export const NOTIFICATION_CATEGORIES = {
   SHIFT_ROTATION: 'shift_rotation',
 } as const;
 
-// Default shifts (for initial setup) - Đa ngôn ngữ
+// ✅ DEFAULT_SHIFTS đã được thay thế bằng sampleShiftsService
+// Xem src/services/sampleShifts.ts để quản lý dữ liệu mẫu ca làm việc
+/*
 export const DEFAULT_SHIFTS = {
   vi: [
     {
@@ -598,6 +582,7 @@ export const DEFAULT_SHIFTS = {
     },
   ],
 } as const;
+*/
 
 // Public holidays (sample) - Đa ngôn ngữ
 export const DEFAULT_HOLIDAYS = {

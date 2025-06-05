@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, Vibration } from 'react-native';
-import { Button, Text, IconButton, useTheme } from 'react-native-paper';
+import { View, StyleSheet, Alert, Vibration, Text } from 'react-native';
+import { Button, IconButton, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
   const [isPressed, setIsPressed] = useState(false);
   const [hasTodayLogs, setHasTodayLogs] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [punchButtonPressed, setPunchButtonPressed] = useState(false); // ✅ Trạng thái ẩn nút ký công
 
   // Lấy ngôn ngữ hiện tại để sử dụng cho i18n
   const currentLanguage = state.settings?.language || 'vi';
@@ -35,18 +36,11 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
         return t(currentLanguage, 'buttonStates.awaitingCheckIn');
       case 'check_in':
         return t(currentLanguage, 'buttonStates.checkIn');
-      case 'working':
-        return t(currentLanguage, 'buttonStates.working');
-      case 'awaiting_check_out':
-        return t(currentLanguage, 'buttonStates.awaitingCheckOut');
       case 'check_out':
         return t(currentLanguage, 'buttonStates.checkOut');
-      case 'awaiting_complete':
-        return t(currentLanguage, 'buttonStates.awaitingComplete');
-      case 'complete':
-        return t(currentLanguage, 'buttonStates.complete');
       case 'completed_day':
         return t(currentLanguage, 'buttonStates.completedDay');
+      // ✅ Loại bỏ working, awaiting_check_out, awaiting_complete, complete
       default:
         // Fallback về text gốc từ BUTTON_STATES
         return (BUTTON_STATES as any)[buttonState]?.text || 'UNKNOWN';
@@ -66,6 +60,11 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
       const today = format(new Date(), 'yyyy-MM-dd');
       const logs = await storageService.getAttendanceLogsForDate(today);
       setHasTodayLogs(logs.length > 0);
+
+      // ✅ Reset trạng thái punch button khi hoàn tất hoặc reset
+      if (state.currentButtonState === 'completed_day' || state.currentButtonState === 'go_work') {
+        setPunchButtonPressed(false);
+      }
     } catch (error) {
       console.error('Error checking today logs:', error);
       setHasTodayLogs(false);
@@ -378,31 +377,68 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
         )}
       </View>
 
-      {/* Punch button theo thiết kế mới: chỉ khi đã check-in và chưa check-out */}
+      {/* ✅ Nút ký công thiết kế mới với icon đẹp và logic ẩn sau khi ấn */}
       {state.activeShift?.showPunch &&
-       (state.currentButtonState === 'working' || state.currentButtonState === 'awaiting_check_out') && (
-        <Button
-          mode="outlined"
-          onPress={async () => {
-            try {
-              // Handle punch action
-              const today = new Date().toISOString().split('T')[0];
-              await storageService.addAttendanceLog(today, {
-                type: 'punch',
-                time: new Date().toISOString(),
-              });
+       (state.currentButtonState === 'check_in' || state.currentButtonState === 'check_out') &&
+       !punchButtonPressed && (
+        <View style={styles.punchButtonContainer}>
+          <LinearGradient
+            colors={['#FF6B6B', '#FF8E8E']}
+            style={styles.punchButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Button
+              mode="contained"
+              onPress={async () => {
+                try {
+                  // ✅ Vibration feedback
+                  if (state.settings?.alarmVibrationEnabled) {
+                    Vibration.vibrate(150);
+                  }
 
-              Alert.alert(t(currentLanguage, 'modals.punchSuccess'), t(currentLanguage, 'modals.punchSuccessMessage'));
-            } catch (error) {
-              Alert.alert(t(currentLanguage, 'common.error'), t(currentLanguage, 'common.error') + ': Không thể ký công. Vui lòng thử lại.');
-            }
-          }}
-          style={styles.punchButton}
-          contentStyle={styles.punchButtonContent}
-          icon="pencil"
-        >
-          {t(currentLanguage, 'modals.punchButton')}
-        </Button>
+                  // ✅ Ẩn nút ngay lập tức để tránh spam
+                  setPunchButtonPressed(true);
+
+                  // Handle punch action
+                  const today = new Date().toISOString().split('T')[0];
+                  await storageService.addAttendanceLog(today, {
+                    type: 'punch',
+                    time: new Date().toISOString(),
+                  });
+
+                  Alert.alert(
+                    t(currentLanguage, 'modals.punchSuccess'),
+                    t(currentLanguage, 'modals.punchSuccessMessage'),
+                    [{ text: t(currentLanguage, 'common.ok') }]
+                  );
+                } catch (error) {
+                  // ✅ Nếu có lỗi, hiện lại nút
+                  setPunchButtonPressed(false);
+                  Alert.alert(
+                    t(currentLanguage, 'common.error'),
+                    t(currentLanguage, 'common.error') + ': Không thể ký công. Vui lòng thử lại.'
+                  );
+                }
+              }}
+              style={styles.punchButton}
+              contentStyle={styles.punchButtonContent}
+              labelStyle={styles.punchButtonLabel}
+            >
+              <View style={styles.punchButtonInner}>
+                <MaterialCommunityIcons
+                  name="signature-freehand"
+                  size={20}
+                  color="#FFFFFF"
+                  style={styles.punchButtonIcon}
+                />
+                <Text style={styles.punchButtonText}>
+                  {t(currentLanguage, 'modals.punchButton')}
+                </Text>
+              </View>
+            </Button>
+          </LinearGradient>
+        </View>
       )}
 
       {/* Loading overlay for processing state */}
@@ -477,13 +513,45 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderRadius: BORDER_RADIUS.round,
   },
-  punchButton: {
-    marginTop: SPACING.sm,
+  // ✅ Styles mới cho nút ký công thiết kế đẹp
+  punchButtonContainer: {
+    marginTop: SPACING.md,
+    alignItems: 'center',
+  },
+  punchButtonGradient: {
     borderRadius: BORDER_RADIUS.lg,
+    elevation: 4,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  punchButton: {
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: 'transparent',
   },
   punchButtonContent: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  punchButtonLabel: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  punchButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  punchButtonIcon: {
+    marginRight: SPACING.xs,
+  },
+  punchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

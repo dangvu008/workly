@@ -9,8 +9,8 @@ import {
   Divider,
   useTheme,
   Menu,
-  IconButton
 } from 'react-native-paper';
+import { WorklyIconButton, COMMON_ICONS } from '../components/WorklyIcon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../contexts/AppContext';
 import { LANGUAGES } from '../constants';
@@ -184,8 +184,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   visible={languageMenuVisible}
                   onDismiss={() => setLanguageMenuVisible(false)}
                   anchor={
-                    <IconButton
-                      icon="chevron-down"
+                    <WorklyIconButton
+                      name={COMMON_ICONS.chevronDown}
                       onPress={() => setLanguageMenuVisible(true)}
                     />
                   }
@@ -227,8 +227,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   visible={modeMenuVisible}
                   onDismiss={() => setModeMenuVisible(false)}
                   anchor={
-                    <IconButton
-                      icon="chevron-down"
+                    <WorklyIconButton
+                      name={COMMON_ICONS.chevronDown}
                       onPress={() => setModeMenuVisible(true)}
                     />
                   }
@@ -380,6 +380,8 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
               description={t(currentLanguage, 'settings.version')}
               left={(props) => <List.Icon {...props} icon="information" />}
             />
+
+
           </Card.Content>
         </Card>
 

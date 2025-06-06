@@ -12,6 +12,7 @@ import { workManager } from '../services/workManager';
 import { weatherService } from '../services/weather';
 import { notificationService } from '../services/notifications';
 import { alarmService } from '../services/alarmService';
+import { dayOffService } from '../services/dayOffService';
 import { format, addDays, startOfWeek } from 'date-fns';
 
 // State interface
@@ -175,6 +176,7 @@ interface AppContextType {
     refreshButtonState: () => Promise<void>;
     refreshWeeklyStatus: () => Promise<void>;
     refreshTimeDisplayInfo: () => Promise<void>;
+    forceRefreshAllStatus: () => Promise<void>;
   };
 }
 
@@ -261,6 +263,11 @@ export function AppProvider({ children }: AppProviderProps) {
       }
 
       console.log('✅ AppContext: Hoàn thành dọn dẹp và lập lịch lại thông báo');
+
+      // ✅ Khởi tạo ngày nghỉ thông thường (tự động đặt Chủ Nhật là ngày nghỉ)
+      console.log('🔄 AppContext: Khởi tạo ngày nghỉ thông thường...');
+      await dayOffService.initializeDayOffs();
+      console.log('✅ AppContext: Hoàn thành khởi tạo ngày nghỉ thông thường');
 
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -541,11 +548,13 @@ export function AppProvider({ children }: AppProviderProps) {
       console.log('🚀 AppContext: Saving status to storage');
       await storageService.setDailyWorkStatusNewForDate(today, status);
 
-      // Refresh state
-      console.log('🚀 AppContext: Refreshing states');
-      await refreshButtonState();
-      await refreshWeeklyStatus();
+      // ✅ FIX: Refresh state KHÔNG gọi refreshButtonState() để tránh trigger lại rapid press detection
+      // Thay vào đó, set trực tiếp button state thành 'completed_day'
+      console.log('🚀 AppContext: Setting button state to completed_day after rapid press confirmation');
+      dispatch({ type: 'SET_BUTTON_STATE', payload: 'completed_day' });
 
+      // Chỉ refresh weekly status và today status
+      await refreshWeeklyStatus();
       const todayStatus = await storageService.getDailyWorkStatusForDate(today);
       dispatch({ type: 'SET_TODAY_STATUS', payload: todayStatus });
 
@@ -642,6 +651,33 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  // ✅ Force refresh tất cả trạng thái - dùng cho debug
+  const forceRefreshAllStatus = async () => {
+    try {
+      console.log('🔄 AppContext: Force refreshing all status...');
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+
+      // Force tính lại trạng thái từ logs
+      await workManager.recalculateFromAttendanceLogs(today);
+
+      // Đợi một chút để đảm bảo storage được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Refresh tất cả state
+      await Promise.all([
+        refreshButtonState(),
+        refreshWeeklyStatus(),
+        refreshTimeDisplayInfo()
+      ]);
+
+      console.log('✅ AppContext: Force refresh completed');
+
+    } catch (error) {
+      console.error('❌ AppContext: Error force refreshing status:', error);
+    }
+  };
+
   // Initialize app on mount
   useEffect(() => {
     loadInitialData();
@@ -706,6 +742,7 @@ export function AppProvider({ children }: AppProviderProps) {
       refreshButtonState,
       refreshWeeklyStatus,
       refreshTimeDisplayInfo,
+      forceRefreshAllStatus,
     },
   };
 

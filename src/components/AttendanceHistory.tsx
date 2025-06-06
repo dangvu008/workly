@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, useTheme, Divider } from 'react-native-paper';
 import { format, parseISO } from 'date-fns';
 import { vi, enUS } from 'date-fns/locale';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from './WorklyIcon';
 import { useApp } from '../contexts/AppContext';
 import { AttendanceLog } from '../types';
 import { BUTTON_STATES } from '../constants';
@@ -99,7 +99,7 @@ export function AttendanceHistory({ visible = true }: AttendanceHistoryProps) {
           <View key={`${log.type}-${log.time}-${index}`}>
             <View style={styles.logItem}>
               <View style={styles.logIcon}>
-                <MaterialCommunityIcons
+                <FastIcon
                   name={getActionIcon(log.type) as any}
                   size={20}
                   color={getActionColor(log.type)}

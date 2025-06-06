@@ -159,6 +159,16 @@ class WorkManager {
             const durationSeconds = differenceInSeconds(checkOutTime, checkInTime);
 
             if (durationSeconds < settings.rapidPressThresholdSeconds) {
+              // ✅ FIX: Kiểm tra xem đã có complete log chưa để tránh trigger lại rapid press detection
+              const logs = await storageService.getAttendanceLogsForDate(today);
+              const hasCompleteLog = logs.some(log => log.type === 'complete');
+
+              if (hasCompleteLog) {
+                console.log('🚀 WorkManager: Complete log already exists, skipping rapid press detection');
+                // Đã có complete log, không cần rapid press detection nữa
+                return;
+              }
+
               // Throw exception để UI xử lý confirmation dialog
               // Đây KHÔNG phải lỗi - đây là flow bình thường để yêu cầu xác nhận từ user
               console.log('🚀 WorkManager: Rapid press detected, throwing RapidPressDetectedException for UI confirmation');
@@ -187,6 +197,10 @@ class WorkManager {
 
       // Tính toán và lưu daily work status
       await this.calculateAndSaveDailyWorkStatus(today);
+
+      // ✅ FIX: Đảm bảo trạng thái được cập nhật ngay lập tức
+      console.log('🔄 WorkManager: Force recalculating status after button press to ensure consistency');
+      await this.recalculateFromAttendanceLogs(today);
 
     } catch (error) {
       if (error instanceof RapidPressDetectedException) {
@@ -297,8 +311,11 @@ class WorkManager {
         date,
         status: status.status,
         hasCompleteLog: logs.some(log => log.type === 'complete'),
+        hasCheckOutLog: logs.some(log => log.type === 'check_out'),
         totalLogs: logs.length,
-        logTypes: logs.map(log => log.type)
+        logTypes: logs.map(log => log.type),
+        standardHours: status.standardHours,
+        totalHours: status.totalHours
       });
 
     } catch (error) {
@@ -418,6 +435,28 @@ class WorkManager {
         nightHours: shift.isNightShift ? standardHours : 0,
         isHolidayWork
       };
+    }
+
+    // ✅ FIX: Nếu trạng thái là CHUA_RA (chưa check out) nhưng đã check in
+    // Tính giờ làm việc dựa trên thời gian đã làm việc cho đến hiện tại
+    if (status === 'CHUA_RA') {
+      const checkInLog = logs.find(log => log.type === 'check_in');
+      if (checkInLog) {
+        const checkInTime = new Date(checkInLog.time);
+        const currentTime = new Date();
+        const totalMinutes = differenceInMinutes(currentTime, checkInTime);
+        const workMinutes = Math.max(0, totalMinutes - (shift.breakMinutes || 0));
+        const totalHours = Math.max(0, workMinutes / 60);
+
+        return {
+          standardHours: Math.min(totalHours, 8),
+          otHours: Math.max(0, totalHours - 8),
+          totalHours,
+          sundayHours: isSunday ? totalHours : 0,
+          nightHours: shift.isNightShift ? totalHours : 0,
+          isHolidayWork
+        };
+      }
     }
 
     // Các trạng thái khác tính theo thời gian thực tế (nếu có)
@@ -987,6 +1026,29 @@ class WorkManager {
 
     } catch (error) {
       console.error('Error scheduling weekly reminder:', error);
+    }
+  }
+
+  /**
+   * Debug function để kiểm tra trạng thái hiện tại
+   */
+  async debugCurrentStatus(date: string): Promise<void> {
+    try {
+      console.log('🔍 === DEBUG CURRENT STATUS ===');
+      console.log(`📅 Date: ${date}`);
+
+      const logs = await storageService.getAttendanceLogsForDate(date);
+      const status = await storageService.getDailyWorkStatusForDate(date);
+      const buttonState = await this.getCurrentButtonState(date);
+
+      console.log('📋 Attendance Logs:', logs.map(log => `${log.type} at ${format(parseISO(log.time), 'HH:mm:ss')}`));
+      console.log('📊 Current Status:', status?.status || 'No status');
+      console.log('🔘 Button State:', buttonState);
+      console.log('⏰ Standard Hours:', status?.standardHoursScheduled || 0);
+      console.log('🔍 === END DEBUG ===');
+
+    } catch (error) {
+      console.error('❌ Debug error:', error);
     }
   }
 

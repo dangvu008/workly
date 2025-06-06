@@ -16,7 +16,8 @@ import ExpoGoBanner from '../components/ExpoGoBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AnimatedCard } from '../components/AnimatedCard';
 import { WorklyBackground } from '../components/WorklyBackground';
-import { OptimizedIconButton } from '../components/OptimizedIconButton';
+import { WorklyIconButton, COMMON_ICONS } from '../components/WorklyIcon';
+
 import { commonStyles, SPACING, TYPOGRAPHY, BORDER_RADIUS, getResponsivePadding } from '../constants/themes';
 import { TabParamList, RootStackParamList } from '../types';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -403,10 +404,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 {t(currentLanguage, 'home.currentShift')}
               </Text>
-              <OptimizedIconButton
-                icon="pencil"
+              <WorklyIconButton
+                name={COMMON_ICONS.edit}
                 size={20}
-                iconColor={theme.colors.primary}
+                color={theme.colors.primary}
                 onPress={() => navigation.navigate('ShiftsTab')}
                 style={commonStyles.accessibleTouchTarget}
               />
@@ -449,6 +450,8 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
           </Card.Content>
         </AnimatedCard>
 
+
+
         {/* Notes Section với animation */}
         <AnimatedCard animationType="slideUp" delay={600} elevated backgroundColor={theme.colors.surfaceVariant}>
           <Card.Content>
@@ -456,10 +459,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
               <Text style={[commonStyles.cardTitle, { color: theme.colors.onSurface }]}>
                 {t(currentLanguage, 'home.upcomingReminders')}
               </Text>
-              <OptimizedIconButton
-                icon="menu"
+              <WorklyIconButton
+                name="menu"
                 size={20}
-                iconColor={theme.colors.primary}
+                color={theme.colors.primary}
                 onPress={() => navigation.navigate('NotesTab')}
                 style={commonStyles.accessibleTouchTarget}
               />
@@ -512,34 +515,34 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
                           </View>
                         </View>
                         <View style={styles.noteActions}>
-                          <OptimizedIconButton
-                            icon="pencil"
+                          <WorklyIconButton
+                            name={COMMON_ICONS.edit}
                             size={14}
-                            iconColor={theme.colors.primary}
+                            color={theme.colors.primary}
                             onPress={() => {
                               navigation.navigate('NoteDetail', { noteId: note.id });
                             }}
                           />
-                          <OptimizedIconButton
-                            icon="bell-sleep"
+                          <WorklyIconButton
+                            name="bell-sleep"
                             size={14}
-                            iconColor={theme.colors.secondary}
+                            color={theme.colors.secondary}
                             onPress={() => {
                               handleSnoozeNote(note);
                             }}
                           />
-                          <OptimizedIconButton
-                            icon="eye-off"
+                          <WorklyIconButton
+                            name={COMMON_ICONS.eyeOff}
                             size={14}
-                            iconColor={theme.colors.outline}
+                            color={theme.colors.outline}
                             onPress={() => {
                               handleHideNote(note);
                             }}
                           />
-                          <OptimizedIconButton
-                            icon="delete"
+                          <WorklyIconButton
+                            name={COMMON_ICONS.delete}
                             size={14}
-                            iconColor={theme.colors.error}
+                            color={theme.colors.error}
                             onPress={() => {
                               handleDeleteNote(note);
                             }}

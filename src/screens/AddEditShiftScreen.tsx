@@ -13,7 +13,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from '../components/WorklyIcon';
 import { WorklyBackground } from '../components/WorklyBackground';
 import { useApp } from '../contexts/AppContext';
 import { Shift } from '../types';
@@ -265,7 +265,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         {label}
       </Text>
       <View style={styles.timePickerContent}>
-        <MaterialCommunityIcons
+        <FastIcon
           name="clock-outline"
           size={20}
           color={theme.colors.onSurfaceVariant}
@@ -274,7 +274,7 @@ export function AddEditShiftScreen({ navigation, route }: AddEditShiftScreenProp
         <Text style={[styles.timePickerValue, { color: theme.colors.onSurface }]}>
           {value}
         </Text>
-        <MaterialCommunityIcons
+        <FastIcon
           name="chevron-down"
           size={20}
           color={theme.colors.onSurfaceVariant}

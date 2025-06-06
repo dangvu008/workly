@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert, Vibration, Text } from 'react-native';
 import { Button, IconButton, useTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FastIcon } from './WorklyIcon';
 import { useApp } from '../contexts/AppContext';
 import { BUTTON_STATES } from '../constants';
 import { storageService } from '../services/storage';
@@ -225,8 +225,8 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
 
                   console.log('✅ MultiFunctionButton: handleRapidPressConfirmed completed successfully');
 
-                  // Refresh logs status after confirmation
-                  await checkTodayLogs();
+                  // ✅ FIX: KHÔNG gọi checkTodayLogs() để tránh trigger lại rapid press detection
+                  // AppContext đã xử lý việc set button state thành 'completed_day'
 
                   Alert.alert(
                     t(currentLanguage, 'modals.rapidPressSuccess'),
@@ -350,7 +350,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
             ]}
           >
             <View style={styles.buttonInner}>
-              <MaterialCommunityIcons
+              <FastIcon
                 name={buttonConfig.icon as any}
                 size={SCREEN_DIMENSIONS.isSmallScreen ? 24 : 28}
                 color={isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF'}
@@ -426,7 +426,7 @@ export function MultiFunctionButton({ onPress }: MultiFunctionButtonProps) {
               labelStyle={styles.punchButtonLabel}
             >
               <View style={styles.punchButtonInner}>
-                <MaterialCommunityIcons
+                <FastIcon
                   name="signature-freehand"
                   size={20}
                   color="#FFFFFF"
@@ -627,7 +627,7 @@ export function SimpleMultiFunctionButton({ onPress }: MultiFunctionButtonProps)
           ]}
         >
           <View style={styles.buttonInner}>
-            <MaterialCommunityIcons
+            <FastIcon
               name={buttonConfig.icon as any}
               size={SCREEN_DIMENSIONS.isSmallScreen ? 24 : 28}
               color={isDisabled ? theme.colors.onSurfaceDisabled : '#FFFFFF'}
